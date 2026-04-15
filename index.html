@@ -25,19 +25,35 @@
       max-height:200px;
     }
 
-    /* NEW VERSION BADGE */
-    .version-badge {
+    /* 🔥 BIG CENTER VERSION OVERLAY */
+    .version-overlay {
       position:absolute;
-      top:10px;
-      left:10px;
-      z-index:9999;
-      background:black;
+      top:50%;
+      left:50%;
+      transform:translate(-50%, -50%);
+      z-index:10000;
+
+      background:rgba(0,0,0,0.85);
       color:white;
-      padding:8px 12px;
-      border-radius:6px;
-      font-size:14px;
-      font-weight:bold;
-      box-shadow:0 2px 6px rgba(0,0,0,0.3);
+
+      padding:30px 60px;
+      border-radius:16px;
+
+      font-size:48px;
+      font-weight:800;
+      letter-spacing:2px;
+
+      box-shadow:0 10px 30px rgba(0,0,0,0.4);
+
+      pointer-events:none;
+    }
+
+    .version-overlay small {
+      display:block;
+      font-size:18px;
+      font-weight:400;
+      margin-top:10px;
+      opacity:0.8;
     }
   </style>
 </head>
@@ -46,8 +62,11 @@
 
 <div id="map"></div>
 
-<!-- NEW VERSION MARKER -->
-<div class="version-badge">Map Debug v2.0</div>
+<!-- 🔥 BIG VERSION MARKER -->
+<div class="version-overlay">
+  2.0
+  <small>NEW MAP VERSION</small>
+</div>
 
 <div class="log" id="log">Logs...</div>
 
