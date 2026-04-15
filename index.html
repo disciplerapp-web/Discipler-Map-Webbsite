@@ -5,7 +5,7 @@
   <title>Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Leaflet (FREE MAP) -->
+  <!-- FREE MAP (Leaflet + OpenStreetMap) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
@@ -13,12 +13,11 @@
     body { margin:0; padding:0; }
     #map { position:absolute; top:0; bottom:0; width:100%; }
 
-    /* Top controls */
     .controls {
       position:absolute;
       top:10px;
       left:10px;
-      z-index:1;
+      z-index:1000;
       display:flex;
       gap:10px;
     }
@@ -36,7 +35,6 @@
       box-shadow:0 2px 6px rgba(0,0,0,0.2);
     }
 
-    /* Bottom scroll */
     .scroll {
       position:absolute;
       bottom:0;
@@ -48,6 +46,7 @@
       align-items:center;
       gap:10px;
       padding:10px;
+      z-index:1000;
     }
 
     .event {
@@ -77,27 +76,27 @@
 <div class="scroll" id="eventScroll"></div>
 
 <script>
-mapboxgl.accessToken = "YOUR_MAPBOX_TOKEN";
-
 const GRAPHQL_ENDPOINT = "YOUR_GRAPHQL_ENDPOINT";
 const API_KEY = "YOUR_API_KEY";
 
 let map;
-let markers = [];
 let users = [];
 let events = [];
 let mode = "globe";
 
 init();
 
-async function init() {
-  map = new mapboxgl.Map({
-    container: "map",
-    style: "mapbox://styles/mapbox/streets-v11",
-    center: [18.0686, 59.3293],
-    zoom: 10
-  });
+function init() {
+  map = L.map('map').setView([59.3293, 18.0686], 10);
 
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  loadData();
+}
+
+async function loadData() {
   users = await fetchUsers();
   events = await fetchEvents();
 
@@ -164,13 +163,12 @@ async function fetchEvents() {
   return json.data.listPosts.items;
 }
 
-function clearMarkers() {
-  markers.forEach(m => m.remove());
-  markers = [];
-}
-
 function renderMarkers() {
-  clearMarkers();
+  map.eachLayer(layer => {
+    if (layer instanceof L.Marker || layer instanceof L.CircleMarker) {
+      map.removeLayer(layer);
+    }
+  });
 
   let filtered = users.filter(u => u.location);
 
@@ -180,42 +178,31 @@ function renderMarkers() {
     );
   }
 
+  // USERS
   filtered.forEach(user => {
     const lat = user.location.latitude;
     const lng = user.location.longitude;
 
     if (!lat || !lng) return;
 
-    const el = document.createElement("div");
-    el.style.width = "30px";
-    el.style.height = "30px";
-    el.style.borderRadius = "50%";
-    el.style.background = "#4A6CF7";
-
-    const marker = new mapboxgl.Marker(el)
-      .setLngLat([lng, lat])
-      .addTo(map);
-
-    markers.push(marker);
+    L.circleMarker([lat, lng], {
+      radius: 8,
+      color: "#4A6CF7"
+    }).addTo(map);
   });
 
-  // Events
+  // EVENTS
   events.forEach(e => {
     if (!e.location) return;
 
-    const parts = e.location.split(",");
-    const lat = parseFloat(parts[0]);
-    const lng = parseFloat(parts[1]);
+    const [lat, lng] = e.location.split(",").map(Number);
 
-    const el = document.createElement("div");
-    el.innerHTML = "🔥";
-    el.style.fontSize = "24px";
+    const marker = L.marker([lat, lng]).addTo(map);
+    marker.bindPopup("🔥 Event");
 
-    const marker = new mapboxgl.Marker(el)
-      .setLngLat([lng, lat])
-      .addTo(map);
-
-    markers.push(marker);
+    marker.on("click", () => {
+      map.setView([lat, lng], 14);
+    });
   });
 }
 
@@ -228,14 +215,8 @@ function renderEvents() {
     div.className = "event";
 
     div.onclick = () => {
-      const parts = e.location.split(",");
-      const lat = parseFloat(parts[0]);
-      const lng = parseFloat(parts[1]);
-
-      map.flyTo({
-        center: [lng, lat],
-        zoom: 14
-      });
+      const [lat, lng] = e.location.split(",").map(Number);
+      map.setView([lat, lng], 14);
     };
 
     container.appendChild(div);
