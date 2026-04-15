@@ -2,60 +2,26 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Map Debug</title>
+  <title>Map Debug Fixed</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Leaflet (FREE MAP) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
   <style>
     body { margin:0; padding:0; }
     #map { position:absolute; top:0; bottom:0; width:100%; }
-
-    .controls {
+    .log {
       position:absolute;
       top:10px;
-      left:10px;
-      z-index:1000;
-      display:flex;
-      gap:10px;
-    }
-
-    .btn {
+      right:10px;
       background:white;
-      border-radius:50%;
-      width:50px;
-      height:50px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:18px;
-      cursor:pointer;
-      box-shadow:0 2px 6px rgba(0,0,0,0.2);
-    }
-
-    .scroll {
-      position:absolute;
-      bottom:0;
-      width:100%;
-      height:90px;
-      background:white;
-      display:flex;
-      overflow-x:auto;
-      align-items:center;
-      gap:10px;
       padding:10px;
-      z-index:1000;
-    }
-
-    .event {
-      width:70px;
-      height:70px;
-      border-radius:50%;
-      background:#ccc;
-      flex-shrink:0;
-      cursor:pointer;
+      font-size:12px;
+      max-width:300px;
+      z-index:9999;
+      overflow:auto;
+      max-height:200px;
     }
   </style>
 </head>
@@ -63,61 +29,52 @@
 <body>
 
 <div id="map"></div>
-
-<div class="controls">
-  <div class="btn" onclick="setMode('globe')">🌍</div>
-  <div class="btn" onclick="setMode('church')">⛪</div>
-  <div class="btn" onclick="setMode('leaders')">👥</div>
-  <div class="btn" onclick="search()">🔍</div>
-</div>
-
-<div class="scroll" id="eventScroll"></div>
+<div class="log" id="log">Logs...</div>
 
 <script>
 const GRAPHQL_ENDPOINT = "https://j477ltgkvvhgbazn6ivbfb5be4.appsync-api.eu-north-1.amazonaws.com/graphql";
-const API_KEY = "da2-xxxxxxxxxxxxxxxxxxxx";
+const API_KEY = "YOUR_API_KEY";
 
 let map;
 let users = [];
 let events = [];
-let mode = "globe";
+
+function log(msg) {
+  console.log(msg);
+  document.getElementById("log").innerHTML += "<br>" + msg;
+}
 
 init();
 
 function init() {
-  console.log("🟢 Map init started");
+  log("🟢 init map");
 
   map = L.map('map').setView([59.3293, 18.0686], 10);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
+    attribution: '&copy; OpenStreetMap'
   }).addTo(map);
 
   loadData();
 }
 
 async function loadData() {
-  console.log("🚀 loadData started");
-
   try {
     users = await fetchUsers();
-    console.log("👤 USERS:", users);
-
     events = await fetchEvents();
-    console.log("🔥 EVENTS:", events);
 
-    console.log("📊 Counts → users:", users.length, "events:", events.length);
+    log("👤 users loaded: " + users.length);
+    log("🔥 events loaded: " + events.length);
 
-    renderMarkers();
-    renderEvents();
+    render();
 
-  } catch (err) {
-    console.error("❌ loadData error:", err);
+  } catch (e) {
+    log("❌ loadData error: " + e.message);
   }
 }
 
 async function fetchUsers() {
-  console.log("📡 fetchUsers called");
+  log("📡 fetchUsers");
 
   const query = `
     query {
@@ -127,7 +84,6 @@ async function fetchUsers() {
           name
           church
           churchPosition
-          locationSharing
           location {
             latitude
             longitude
@@ -137,36 +93,34 @@ async function fetchUsers() {
     }
   `;
 
-  try {
-    const res = await fetch(GRAPHQL_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": API_KEY
-      },
-      body: JSON.stringify({ query })
-    });
+  const res = await fetch(GRAPHQL_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": API_KEY
+    },
+    body: JSON.stringify({ query })
+  });
 
-    console.log("📡 users HTTP status:", res.status);
+  const json = await res.json();
 
-    const json = await res.json();
-    console.log("📡 users response:", json);
+  log("📡 users raw: " + JSON.stringify(json));
 
-    if (json.errors) {
-      console.error("❌ USERS GraphQL errors:", json.errors);
-      return [];
-    }
-
-    return json.data?.listUsers?.items || [];
-
-  } catch (err) {
-    console.error("❌ fetchUsers failed:", err);
+  if (json.errors) {
+    log("❌ USERS ERROR: " + json.errors[0].message);
     return [];
   }
+
+  if (!json.data || !json.data.listUsers) {
+    log("⚠️ USERS NULL → permission issue (API key not allowed)");
+    return [];
+  }
+
+  return json.data.listUsers.items || [];
 }
 
 async function fetchEvents() {
-  console.log("📡 fetchEvents called");
+  log("📡 fetchEvents");
 
   const query = `
     query {
@@ -175,42 +129,34 @@ async function fetchEvents() {
           id
           title
           location
-          photo
         }
       }
     }
   `;
 
-  try {
-    const res = await fetch(GRAPHQL_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": API_KEY
-      },
-      body: JSON.stringify({ query })
-    });
+  const res = await fetch(GRAPHQL_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": API_KEY
+    },
+    body: JSON.stringify({ query })
+  });
 
-    console.log("📡 events HTTP status:", res.status);
+  const json = await res.json();
 
-    const json = await res.json();
-    console.log("📡 events response:", json);
+  log("📡 events raw: " + JSON.stringify(json));
 
-    if (json.errors) {
-      console.error("❌ EVENTS GraphQL errors:", json.errors);
-      return [];
-    }
-
-    return json.data?.listPosts?.items || [];
-
-  } catch (err) {
-    console.error("❌ fetchEvents failed:", err);
+  if (json.errors) {
+    log("❌ EVENTS ERROR: " + json.errors[0].message);
     return [];
   }
+
+  return json.data?.listPosts?.items || [];
 }
 
-function renderMarkers() {
-  console.log("🗺️ renderMarkers");
+function render() {
+  log("🗺️ render markers");
 
   map.eachLayer(layer => {
     if (layer instanceof L.Marker || layer instanceof L.CircleMarker) {
@@ -218,25 +164,11 @@ function renderMarkers() {
     }
   });
 
-  let filtered = users.filter(u => u.location);
+  users.forEach(u => {
+    if (!u.location) return;
 
-  if (mode === "leaders") {
-    filtered = filtered.filter(u =>
-      u.churchPosition?.toLowerCase().includes("leader")
-    );
-  }
-
-  console.log("👤 filtered users:", filtered.length);
-
-  filtered.forEach(user => {
-    const lat = user.location.latitude;
-    const lng = user.location.longitude;
-
-    if (!lat || !lng) return;
-
-    L.circleMarker([lat, lng], {
-      radius: 8,
-      color: "#4A6CF7"
+    L.circleMarker([u.location.latitude, u.location.longitude], {
+      radius: 6
     }).addTo(map);
   });
 
@@ -244,40 +176,8 @@ function renderMarkers() {
     if (!e.location) return;
 
     const [lat, lng] = e.location.split(",").map(Number);
-
-    if (!lat || !lng) return;
-
-    const marker = L.marker([lat, lng]).addTo(map);
-    marker.bindPopup("🔥 Event");
+    L.marker([lat, lng]).addTo(map);
   });
-}
-
-function renderEvents() {
-  console.log("📦 renderEvents");
-
-  const container = document.getElementById("eventScroll");
-  container.innerHTML = "";
-
-  events.forEach(e => {
-    const div = document.createElement("div");
-    div.className = "event";
-
-    div.onclick = () => {
-      const [lat, lng] = e.location.split(",").map(Number);
-      map.setView([lat, lng], 14);
-    };
-
-    container.appendChild(div);
-  });
-}
-
-function setMode(newMode) {
-  mode = newMode;
-  renderMarkers();
-}
-
-function search() {
-  alert("Search clicked");
 }
 </script>
 
