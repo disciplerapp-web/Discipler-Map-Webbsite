@@ -11,6 +11,7 @@
   <style>
     body { margin:0; padding:0; }
     #map { position:absolute; top:0; bottom:0; width:100%; }
+
     .log {
       position:absolute;
       top:10px;
@@ -23,12 +24,31 @@
       overflow:auto;
       max-height:200px;
     }
+
+    /* NEW VERSION BADGE */
+    .version-badge {
+      position:absolute;
+      top:10px;
+      left:10px;
+      z-index:9999;
+      background:black;
+      color:white;
+      padding:8px 12px;
+      border-radius:6px;
+      font-size:14px;
+      font-weight:bold;
+      box-shadow:0 2px 6px rgba(0,0,0,0.3);
+    }
   </style>
 </head>
 
 <body>
 
 <div id="map"></div>
+
+<!-- NEW VERSION MARKER -->
+<div class="version-badge">Map Debug v2.0</div>
+
 <div class="log" id="log">Logs...</div>
 
 <script>
