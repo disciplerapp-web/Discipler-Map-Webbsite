@@ -24,42 +24,12 @@ body { margin:0; padding:0; }
   overflow:auto;
   max-height:200px;
 }
-
-.version-overlay {
-  position:absolute;
-  top:50%;
-  left:50%;
-  transform:translate(-50%, -50%);
-  z-index:10000;
-  background:rgba(0,0,0,0.85);
-  color:white;
-  padding:30px 60px;
-  border-radius:16px;
-  font-size:48px;
-  font-weight:800;
-  letter-spacing:2px;
-  pointer-events:none;
-}
-
-.version-overlay small {
-  display:block;
-  font-size:18px;
-  font-weight:400;
-  margin-top:10px;
-  opacity:0.8;
-}
 </style>
 </head>
 
 <body>
 
 <div id="map"></div>
-
-<div class="version-overlay">
-2.0
-<small>NEW MAP VERSION990</small>
-</div>
-
 <div class="log" id="log">Logs...</div>
 
 <script>
@@ -70,101 +40,117 @@ let users = [];
 let events = [];
 
 function log(msg) {
-console.log(msg);
-document.getElementById("log").innerHTML += "<br>" + msg;
+  console.log(msg);
+  document.getElementById("log").innerHTML += "<br>" + msg;
 }
 
 init();
 
 function init() {
-log("🟢 init map");
+  log("🟢g init map");
 
-map = L.map('map').setView([59.3293, 18.0686], 10);
+  map = L.map('map').setView([59.3293, 18.0686], 10);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
- attribution: '&copy; OpenStreetMap'
-}).addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
 
-loadData();
+  loadData();
 }
 
 async function loadData() {
-try {
- users = await fetchUsers();
- events = await fetchEvents();
+  try {
+    users = await fetchUsers();
+    events = await fetchEvents();
 
- log("👤 users loaded: " + users.length);
- log("🔥 events loaded: " + events.length);
+    log("👤 users loaded: " + users.length);
+    log("🔥 events loaded: " + events.length);
 
- render();
+    render();
 
-} catch (e) {
- log("❌ loadData error: " + e.message);
-}
+  } catch (e) {
+    log("❌ loadData error: " + e.message);
+  }
 }
 
 async function fetchUsers() {
-log("📡 fetchUsers");
+  log("📡 fetchUsers");
 
-const res = await fetch(`${API_BASE}/users`);
-const json = await res.json();
+  const res = await fetch(`${API_BASE}/users`);
+  const json = await res.json();
 
-log("📡 users raw: " + JSON.stringify(json));
+  log("📡 users raw: " + JSON.stringify(json));
 
-return json || [];
+  return (json || []).map(normalizeUser);
 }
 
 async function fetchEvents() {
-log("📡 fetchEvents (disabled for now)");
-return [];
+  log("📡 fetchEvents (disabled for now)");
+  return [];
 }
 
-function safeCoord(val) {
-return typeof val === "number" ? val : parseFloat(val);
+/* ---------------------------
+   NORMALIZE DYNAMODB SHAPE
+----------------------------*/
+function normalizeUser(u) {
+  const loc = u.location?.M;
+
+  return {
+    ...u,
+    name: u.name?.S,
+    email: u.email?.S,
+    church: u.church?.S,
+
+    ghostMode: u.ghostMode?.BOOL === true,
+
+    latitude: loc?.latitude?.N ? parseFloat(loc.latitude.N) : null,
+    longitude: loc?.longitude?.N ? parseFloat(loc.longitude.N) : null
+  };
 }
 
+/* ---------------------------
+   RENDER MAP
+----------------------------*/
 function render() {
-log("🗺️ render markers");
+  log("🗺️ render markers");
 
-map.eachLayer(layer => {
- if (layer instanceof L.Marker || layer instanceof L.CircleMarker) {
-   map.removeLayer(layer);
- }
-});
-
-users
-  .filter(u => !u.ghostMode) // 🔥 HIDE GHOST MODE USERS
-  .forEach(u => {
-
-    const loc = u.location;
-    if (!loc) return;
-
-    const lat = safeCoord(loc.latitude);
-    const lng = safeCoord(loc.longitude);
-
-    if (isNaN(lat) || isNaN(lng)) return;
-
-    const marker = L.circleMarker([lat, lng], {
-      radius: 7
-    }).addTo(map);
-
-    const popupHTML = `
-      <div style="min-width:180px">
-        <strong>${u.name || "No name"}</strong><br/>
-        ${u.email || ""}<br/>
-        ${u.church || ""}<br/>
-      </div>
-    `;
-
-    marker.bindPopup(popupHTML);
+  map.eachLayer(layer => {
+    if (layer instanceof L.Marker || layer instanceof L.CircleMarker) {
+      map.removeLayer(layer);
+    }
   });
 
-events.forEach(e => {
- if (!e.location) return;
+  users
+    .filter(u => !u.ghostMode)
+    .forEach(u => {
 
- const [lat, lng] = e.location.split(",").map(Number);
- L.marker([lat, lng]).addTo(map);
-});
+      const lat = u.latitude;
+      const lng = u.longitude;
+
+      if (lat == null || lng == null) return;
+      if (isNaN(lat) || isNaN(lng)) return;
+
+      const marker = L.circleMarker([lat, lng], {
+        radius: 7
+      }).addTo(map);
+
+      marker.bindPopup(`
+        <div style="min-width:180px">
+          <strong>${u.name || "No name"}</strong><br/>
+          ${u.email || ""}<br/>
+          ${u.church || ""}<br/>
+        </div>
+      `);
+    });
+
+  events.forEach(e => {
+    if (!e.location) return;
+
+    const [lat, lng] = e.location.split(",").map(Number);
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    L.marker([lat, lng]).addTo(map);
+  });
 }
 </script>
 
