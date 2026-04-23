@@ -13,16 +13,58 @@ body { margin:0; padding:0; }
 #map { position:absolute; top:0; bottom:0; width:100%; }
 
 .log {
-  position:absolute;
-  top:10px;
-  right:10px;
-  background:white;
-  padding:10px;
-  font-size:12px;
-  max-width:300px;
-  z-index:9999;
-  overflow:auto;
-  max-height:200px;
+ position:absolute;
+ top:10px;
+ right:10px;
+ background:white;
+ padding:10px;
+ font-size:12px;
+ max-width:300px;
+ z-index:9999;
+ overflow:auto;
+ max-height:200px;
+}
+
+/* USER CARD OVERLAY */
+#userCard {
+ position:absolute;
+ bottom:120px;
+ left:50%;
+ transform:translateX(-50%);
+ width:260px;
+ background:white;
+ border-radius:18px;
+ box-shadow:0 10px 30px rgba(0,0,0,0.2);
+ padding:14px;
+ z-index:99999;
+ display:none;
+}
+
+#userCard img {
+ width:50px;
+ height:50px;
+ border-radius:50%;
+ object-fit:cover;
+ background:#ddd;
+}
+
+.cardTop {
+ display:flex;
+ align-items:center;
+ gap:10px;
+}
+
+.emailBtn {
+ margin-top:10px;
+ display:inline-block;
+ width:100%;
+ text-align:center;
+ padding:8px;
+ background:#4a6cf7;
+ color:white;
+ border-radius:10px;
+ text-decoration:none;
+ font-weight:600;
 }
 </style>
 </head>
@@ -32,6 +74,9 @@ body { margin:0; padding:0; }
 <div id="map"></div>
 <div class="log" id="log">Logs...</div>
 
+<!-- USER CARD -->
+<div id="userCard"></div>
+
 <script>
 const API_BASE = "https://zjt4sxvh0l.execute-api.eu-north-1.amazonaws.com";
 
@@ -40,183 +85,181 @@ let users = [];
 let events = [];
 let hasRendered = false;
 
+let selectedUser = null;
+
 function log(msg) {
-  console.log(msg);
-  document.getElementById("log").innerHTML += "<br>" + msg;
+ console.log(msg);
+ document.getElementById("log").innerHTML += "<br>" + msg;
 }
 
 init();
 
 function init() {
-  log("🟢uuu init map");
+ log("🟢ooo init map");
 
-  map = L.map('map').setView([59.3293, 18.0686], 10);
+ map = L.map('map').setView([59.3293, 18.0686], 10);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap'
-  }).addTo(map);
+ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap'
+ }).addTo(map);
 
-  loadData();
+ loadData();
 }
 
 async function loadData() {
-  try {
-    log("⏳ loading data...");
+ try {
+  log("⏳ loading data...");
 
-    const [u, e] = await Promise.all([
-      fetchUsers(),
-      fetchEvents()
-    ]);
+  const [u, e] = await Promise.all([
+   fetchUsers(),
+   fetchEvents()
+  ]);
 
-    users = u;
-    events = e;
+  users = u;
+  events = e;
 
-    log("👤 users loaded: " + users.length);
-    log("🔥 events loaded: " + events.length);
+  log("👤 users loaded: " + users.length);
+  log("🔥 events loaded: " + events.length);
 
-    // ensure render only happens once FULL dataset is ready
-    if (!hasRendered) {
-      hasRendered = true;
-      render();
-    }
-
-  } catch (e) {
-    log("❌ loadData error: " + e.message);
+  if (!hasRendered) {
+   hasRendered = true;
+   render();
   }
+
+ } catch (e) {
+  log("❌ loadData error: " + e.message);
+ }
 }
 
 async function fetchUsers() {
-  log("📡 fetchUsers");
-
-  const res = await fetch(`${API_BASE}/users`);
-  const json = await res.json();
-
-  return (json || []).map(normalizeUser);
+ const res = await fetch(`${API_BASE}/users`);
+ const json = await res.json();
+ return (json || []).map(normalizeUser);
 }
 
 async function fetchEvents() {
-  log("📡 fetchEvents (disabled for now)");
-  return [];
+ return [];
 }
 
-/* ---------------------------
-   SAFE NORMALIZE (FIXED)
-----------------------------*/
+/* --------------------------- */
 function normalizeUser(u) {
-  const loc = u.location?.M || u.location;
+ const loc = u.location?.M || u.location;
 
-  const latRaw = loc?.latitude?.N ?? loc?.latitude;
-  const lngRaw = loc?.longitude?.N ?? loc?.longitude;
+ const latRaw = loc?.latitude?.N ?? loc?.latitude;
+ const lngRaw = loc?.longitude?.N ?? loc?.longitude;
 
-  return {
-    ...u,
-    name: u.name?.S || u.name,
-    email: u.email?.S || u.email,
-    username: u.username?.S || u.username,
-    church: u.church?.S || u.church,
-
-    ghostMode: u.ghostMode?.BOOL === true,
-
-    latitude: latRaw !== undefined && latRaw !== null ? parseFloat(latRaw) : null,
-    longitude: lngRaw !== undefined && lngRaw !== null ? parseFloat(lngRaw) : null
-  };
+ return {
+  ...u,
+  name: u.name?.S || u.name,
+  email: u.email?.S || u.email,
+  username: u.username?.S || u.username,
+  church: u.church?.S || u.church,
+  image: u.imageKey || null,
+  ghostMode: u.ghostMode?.BOOL === true,
+  latitude: latRaw !== undefined && latRaw !== null ? parseFloat(latRaw) : null,
+  longitude: lngRaw !== undefined && lngRaw !== null ? parseFloat(lngRaw) : null
+ };
 }
 
-/* ---------------------------
-   ICON
-----------------------------*/
-function createIcon() {
-  return L.divIcon({
-    className: "",
-    html: `
-      <div style="
-        width:30px;
-        height:30px;
-        border-radius:50%;
-        background:#4a6cf7;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        color:white;
-        font-size:14px;
-        border:2px solid white;
-        box-shadow:0 2px 6px rgba(0,0,0,0.3);
-      ">👤</div>
-    `,
-    iconSize: [30, 30],
-    iconAnchor: [15, 15]
-  });
+/* --------------------------- ICON */
+function createIcon(isChurchLeader) {
+ return L.divIcon({
+  className: "",
+  html: `
+    <div style="
+      width:30px;
+      height:30px;
+      border-radius:50%;
+      background:#4a6cf7;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:white;
+      font-size:14px;
+      border:2px solid white;
+      box-shadow:0 2px 6px rgba(0,0,0,0.3);
+    ">
+      ${isChurchLeader ? "🏛️" : "👤"}
+    </div>
+  `,
+  iconSize: [30, 30],
+  iconAnchor: [15, 15]
+ });
 }
 
-/* ---------------------------
-   RENDER MAP (FIXED)
-----------------------------*/
+/* --------------------------- RENDER */
 function render() {
-  log("🗺️ render markers");
+ log("🗺️ render markers");
 
-  map.eachLayer(layer => {
-    if (layer instanceof L.Marker) {
-      map.removeLayer(layer);
-    }
+ map.eachLayer(layer => {
+  if (layer instanceof L.Marker) {
+   map.removeLayer(layer);
+  }
+ });
+
+ users
+  .filter(u => !u.ghostMode)
+  .forEach(u => {
+
+   const lat = Number(u.latitude);
+   const lng = Number(u.longitude);
+
+   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+   const isChurchLeader =
+     (u.churchPosition || "").toLowerCase().includes("church leader");
+
+   const marker = L.marker([lat, lng], {
+     icon: createIcon(isChurchLeader)
+   }).addTo(map);
+
+   marker.on("click", () => {
+     map.setView([lat, lng], 15, { animate: true });
+
+     selectedUser = u;
+     openUserCard(u);
+   });
   });
 
-  let validCount = 0;
+ events.forEach(e => {
+  if (!e.location) return;
 
-  users
-    .filter(u => !u.ghostMode)
-    .forEach(u => {
+  const [lat, lng] = e.location.split(",").map(Number);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
-      const lat = Number(u.latitude);
-      const lng = Number(u.longitude);
-
-      // HARD FIX: skip broken coords safely
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-
-      validCount++;
-
-      const marker = L.marker([lat, lng], {
-        icon: createIcon()
-      }).addTo(map);
-
-      marker.on("click", () => {
-        map.setView([lat, lng], 15, { animate: true });
-        marker.openPopup();
-      });
-
-      marker.bindPopup(`
-        <div style="min-width:200px">
-          <strong>${u.name || "No name"}</strong><br/>
-          @${u.username || "unknown"}<br/>
-          ${u.church || ""}<br/>
-
-          ${u.email ? `
-            <a href="mailto:${u.email}" style="
-              display:inline-block;
-              margin-top:8px;
-              padding:6px 10px;
-              background:#4a6cf7;
-              color:white;
-              border-radius:8px;
-              text-decoration:none;
-            ">
-              ✉ Email
-            </a>
-          ` : ""}
-        </div>
-      `);
-    });
-
-  log("✅ valid markers rendered: " + validCount);
-
-  events.forEach(e => {
-    if (!e.location) return;
-
-    const [lat, lng] = e.location.split(",").map(Number);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-
-    L.marker([lat, lng]).addTo(map);
-  });
+  L.marker([lat, lng]).addTo(map);
+ });
 }
+
+/* --------------------------- USER CARD */
+function openUserCard(u) {
+ const card = document.getElementById("userCard");
+
+ card.innerHTML = `
+  <div class="cardTop">
+    ${u.image ? `<img src="${u.image}" />` : `<div style="width:50px;height:50px;border-radius:50%;background:#ccc;"></div>`}
+
+    <div>
+      <div style="font-weight:700;">${u.name || "No name"}</div>
+      <div style="font-size:12px;color:#666;">@${u.username || "unknown"}</div>
+      <div style="font-size:12px;color:#999;">${u.church || ""}</div>
+    </div>
+  </div>
+
+  ${u.email ? `
+    <a class="emailBtn" href="mailto:${u.email}">
+      ✉ Email
+    </a>
+  ` : ""}
+ `;
+
+ card.style.display = "block";
+}
+
+/* close card on map click */
+map?.on("click", () => {
+ document.getElementById("userCard").style.display = "none";
+});
 </script>
 
 </body>
