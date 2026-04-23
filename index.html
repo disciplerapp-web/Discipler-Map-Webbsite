@@ -1,60 +1,54 @@
 <!DOCTYPE html>
 <html>
 <head>
- <meta charset="utf-8" />
- <title>Map Debug Fixed</title>
- <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="utf-8" />
+<title>Map Debug Fixed</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
- <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
- <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
- <style>
-   body { margin:0; padding:0; }
-   #map { position:absolute; top:0; bottom:0; width:100%; }
+<style>
+body { margin:0; padding:0; }
+#map { position:absolute; top:0; bottom:0; width:100%; }
 
-   .log {
-     position:absolute;
-     top:10px;
-     right:10px;
-     background:white;
-     padding:10px;
-     font-size:12px;
-     max-width:300px;
-     z-index:9999;
-     overflow:auto;
-     max-height:200px;
-   }
+.log {
+  position:absolute;
+  top:10px;
+  right:10px;
+  background:white;
+  padding:10px;
+  font-size:12px;
+  max-width:300px;
+  z-index:9999;
+  overflow:auto;
+  max-height:200px;
+}
 
-   .version-overlay {
-     position:absolute;
-     top:50%;
-     left:50%;
-     transform:translate(-50%, -50%);
-     z-index:10000;
+.version-overlay {
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%, -50%);
+  z-index:10000;
+  background:rgba(0,0,0,0.85);
+  color:white;
+  padding:30px 60px;
+  border-radius:16px;
+  font-size:48px;
+  font-weight:800;
+  letter-spacing:2px;
+  pointer-events:none;
+}
 
-     background:rgba(0,0,0,0.85);
-     color:white;
-
-     padding:30px 60px;
-     border-radius:16px;
-
-     font-size:48px;
-     font-weight:800;
-     letter-spacing:2px;
-
-     box-shadow:0 10px 30px rgba(0,0,0,0.4);
-
-     pointer-events:none;
-   }
-
-   .version-overlay small {
-     display:block;
-     font-size:18px;
-     font-weight:400;
-     margin-top:10px;
-     opacity:0.8;
-   }
- </style>
+.version-overlay small {
+  display:block;
+  font-size:18px;
+  font-weight:400;
+  margin-top:10px;
+  opacity:0.8;
+}
+</style>
 </head>
 
 <body>
@@ -62,8 +56,8 @@
 <div id="map"></div>
 
 <div class="version-overlay">
- 2.0
- <small>NEW MAP VERSION89</small>
+2.0
+<small>NEW MAP VERSION</small>
 </div>
 
 <div class="log" id="log">Logs...</div>
@@ -76,79 +70,101 @@ let users = [];
 let events = [];
 
 function log(msg) {
- console.log(msg);
- document.getElementById("log").innerHTML += "<br>" + msg;
+console.log(msg);
+document.getElementById("log").innerHTML += "<br>" + msg;
 }
 
 init();
 
 function init() {
- log("🟢 init map");
+log("🟢 init map");
 
- map = L.map('map').setView([59.3293, 18.0686], 10);
+map = L.map('map').setView([59.3293, 18.0686], 10);
 
- L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-   attribution: '&copy; OpenStreetMap'
- }).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+ attribution: '&copy; OpenStreetMap'
+}).addTo(map);
 
- loadData();
+loadData();
 }
 
 async function loadData() {
- try {
-   users = await fetchUsers();
-   events = await fetchEvents();
+try {
+ users = await fetchUsers();
+ events = await fetchEvents();
 
-   log("👤 users loaded: " + users.length);
-   log("🔥 events loaded: " + events.length);
+ log("👤 users loaded: " + users.length);
+ log("🔥 events loaded: " + events.length);
 
-   render();
+ render();
 
- } catch (e) {
-   log("❌ loadData error: " + e.message);
- }
+} catch (e) {
+ log("❌ loadData error: " + e.message);
+}
 }
 
 async function fetchUsers() {
- log("📡 fetchUsers");
+log("📡 fetchUsers");
 
- const res = await fetch(`${API_BASE}/users`);
+const res = await fetch(`${API_BASE}/users`);
+const json = await res.json();
 
- const json = await res.json();
+log("📡 users raw: " + JSON.stringify(json));
 
- log("📡 users raw: " + JSON.stringify(json));
-
- return json || [];
+return json || [];
 }
 
 async function fetchEvents() {
- log("📡 fetchEvents (disabled for now)");
- return [];
+log("📡 fetchEvents (disabled for now)");
+return [];
+}
+
+function safeCoord(val) {
+return typeof val === "number" ? val : parseFloat(val);
 }
 
 function render() {
- log("🗺️ render markers");
+log("🗺️ render markers");
 
- map.eachLayer(layer => {
-   if (layer instanceof L.Marker || layer instanceof L.CircleMarker) {
-     map.removeLayer(layer);
-   }
- });
+map.eachLayer(layer => {
+ if (layer instanceof L.Marker || layer instanceof L.CircleMarker) {
+   map.removeLayer(layer);
+ }
+});
 
- users.forEach(u => {
-   if (!u.location) return;
+users
+  .filter(u => !u.ghostMode) // 🔥 HIDE GHOST MODE USERS
+  .forEach(u => {
 
-   L.circleMarker([u.location.latitude, u.location.longitude], {
-     radius: 6
-   }).addTo(map);
- });
+    const loc = u.location;
+    if (!loc) return;
 
- events.forEach(e => {
-   if (!e.location) return;
+    const lat = safeCoord(loc.latitude);
+    const lng = safeCoord(loc.longitude);
 
-   const [lat, lng] = e.location.split(",").map(Number);
-   L.marker([lat, lng]).addTo(map);
- });
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    const marker = L.circleMarker([lat, lng], {
+      radius: 7
+    }).addTo(map);
+
+    const popupHTML = `
+      <div style="min-width:180px">
+        <strong>${u.name || "No name"}</strong><br/>
+        ${u.email || ""}<br/>
+        ${u.church || ""}<br/>
+      </div>
+    `;
+
+    marker.bindPopup(popupHTML);
+  });
+
+events.forEach(e => {
+ if (!e.location) return;
+
+ const [lat, lng] = e.location.split(",").map(Number);
+ L.marker([lat, lng]).addTo(map);
+});
 }
 </script>
 
