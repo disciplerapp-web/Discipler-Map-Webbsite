@@ -13,16 +13,16 @@ body { margin:0; padding:0; }
 #map { position:absolute; top:0; bottom:0; width:100%; }
 
 .log {
-  position:absolute;
-  top:10px;
-  right:10px;
-  background:white;
-  padding:10px;
-  font-size:12px;
-  max-width:300px;
-  z-index:9999;
-  overflow:auto;
-  max-height:200px;
+ position:absolute;
+ top:10px;
+ right:10px;
+ background:white;
+ padding:10px;
+ font-size:12px;
+ max-width:300px;
+ z-index:9999;
+ overflow:auto;
+ max-height:200px;
 }
 </style>
 </head>
@@ -40,117 +40,175 @@ let users = [];
 let events = [];
 
 function log(msg) {
-  console.log(msg);
-  document.getElementById("log").innerHTML += "<br>" + msg;
+ console.log(msg);
+ document.getElementById("log").innerHTML += "<br>" + msg;
 }
 
 init();
 
 function init() {
-  log("🟢g init map");
+ log("🟢g init map");
 
-  map = L.map('map').setView([59.3293, 18.0686], 10);
+ map = L.map('map').setView([59.3293, 18.0686], 10);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap'
-  }).addTo(map);
+ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+   attribution: '&copy; OpenStreetMap'
+ }).addTo(map);
 
-  loadData();
+ loadData();
 }
 
 async function loadData() {
-  try {
-    users = await fetchUsers();
-    events = await fetchEvents();
+ try {
+   users = await fetchUsers();
+   events = await fetchEvents();
 
-    log("👤 users loaded: " + users.length);
-    log("🔥 events loaded: " + events.length);
+   log("👤 users loaded: " + users.length);
+   log("🔥 events loaded: " + events.length);
 
-    render();
+   render();
 
-  } catch (e) {
-    log("❌ loadData error: " + e.message);
-  }
+ } catch (e) {
+   log("❌ loadData error: " + e.message);
+ }
 }
 
 async function fetchUsers() {
-  log("📡 fetchUsers");
+ log("📡 fetchUsers");
 
-  const res = await fetch(`${API_BASE}/users`);
-  const json = await res.json();
+ const res = await fetch(`${API_BASE}/users`);
+ const json = await res.json();
 
-  log("📡 users raw: " + JSON.stringify(json));
+ log("📡 users raw: " + JSON.stringify(json));
 
-  return (json || []).map(normalizeUser);
+ return (json || []).map(normalizeUser);
 }
 
 async function fetchEvents() {
-  log("📡 fetchEvents (disabled for now)");
-  return [];
+ log("📡 fetchEvents (disabled for now)");
+ return [];
 }
 
 /* ---------------------------
-   NORMALIZE DYNAMODB SHAPE
+ NORMALIZE DYNAMODB SHAPE
 ----------------------------*/
 function normalizeUser(u) {
-  const loc = u.location?.M;
+ const loc = u.location?.M;
 
-  return {
-    ...u,
-    name: u.name?.S,
-    email: u.email?.S,
-    church: u.church?.S,
+ return {
+   ...u,
+   name: u.name?.S,
+   email: u.email?.S,
+   username: u.username?.S,
+   church: u.church?.S,
+   churchPosition: u.churchPosition?.S,
 
-    ghostMode: u.ghostMode?.BOOL === true,
+   ghostMode: u.ghostMode?.BOOL === true,
 
-    latitude: loc?.latitude?.N ? parseFloat(loc.latitude.N) : null,
-    longitude: loc?.longitude?.N ? parseFloat(loc.longitude.N) : null
-  };
+   latitude: loc?.latitude?.N ? parseFloat(loc.latitude.N) : null,
+   longitude: loc?.longitude?.N ? parseFloat(loc.longitude.N) : null
+ };
 }
 
 /* ---------------------------
-   RENDER MAP
+ ICON BUILDER
+----------------------------*/
+function createUserIcon(isRecommended, isChurchLeader) {
+
+ const color = isRecommended ? "#2ecc71" : "#4a6cf7";
+
+ const iconHtml = isChurchLeader
+   ? "🏛️"
+   : "👤";
+
+ return L.divIcon({
+   className: "",
+   html: `
+     <div style="
+       width:32px;
+       height:32px;
+       border-radius:50%;
+       background:${color};
+       display:flex;
+       align-items:center;
+       justify-content:center;
+       color:white;
+       font-size:16px;
+       border:2px solid white;
+       box-shadow:0 2px 6px rgba(0,0,0,0.3);
+     ">
+       ${iconHtml}
+     </div>
+   `,
+   iconSize: [32, 32],
+   iconAnchor: [16, 16]
+ });
+}
+
+/* ---------------------------
+ RENDER MAP
 ----------------------------*/
 function render() {
-  log("🗺️ render markers");
+ log("🗺️ render markers");
 
-  map.eachLayer(layer => {
-    if (layer instanceof L.Marker || layer instanceof L.CircleMarker) {
-      map.removeLayer(layer);
-    }
-  });
+ map.eachLayer(layer => {
+   if (layer instanceof L.Marker || layer instanceof L.CircleMarker) {
+     map.removeLayer(layer);
+   }
+ });
 
-  users
-    .filter(u => !u.ghostMode)
-    .forEach(u => {
+ users
+   .filter(u => !u.ghostMode)
+   .forEach(u => {
 
-      const lat = u.latitude;
-      const lng = u.longitude;
+     const lat = u.latitude;
+     const lng = u.longitude;
 
-      if (lat == null || lng == null) return;
-      if (isNaN(lat) || isNaN(lng)) return;
+     if (lat == null || lng == null) return;
+     if (isNaN(lat) || isNaN(lng)) return;
 
-      const marker = L.circleMarker([lat, lng], {
-        radius: 7
-      }).addTo(map);
+     const isRecommended = (u.recommended?.toLowerCase() === "recommended");
+     const isChurchLeader =
+       (u.churchPosition || "").toLowerCase().includes("church leader");
 
-      marker.bindPopup(`
-        <div style="min-width:180px">
-          <strong>${u.name || "No name"}</strong><br/>
-          ${u.email || ""}<br/>
-          ${u.church || ""}<br/>
-        </div>
-      `);
-    });
+     const marker = L.marker([lat, lng], {
+       icon: createUserIcon(isRecommended, isChurchLeader)
+     }).addTo(map);
 
-  events.forEach(e => {
-    if (!e.location) return;
+     marker.on("click", () => {
+       map.setView([lat, lng], 15, { animate: true });
+       marker.openPopup();
+     });
 
-    const [lat, lng] = e.location.split(",").map(Number);
-    if (isNaN(lat) || isNaN(lng)) return;
+     marker.bindPopup(`
+       <div style="min-width:200px">
+         <strong>${u.name || "No name"}</strong><br/>
+         @${u.username || "unknown"}<br/>
+         ${u.email ? `
+           <a href="mailto:${u.email}" style="
+             display:inline-block;
+             margin-top:8px;
+             padding:6px 10px;
+             background:#4a6cf7;
+             color:white;
+             border-radius:8px;
+             text-decoration:none;
+           ">
+             ✉ Email
+           </a>
+         ` : ""}
+       </div>
+     `);
+   });
 
-    L.marker([lat, lng]).addTo(map);
-  });
+ events.forEach(e => {
+   if (!e.location) return;
+
+   const [lat, lng] = e.location.split(",").map(Number);
+   if (isNaN(lat) || isNaN(lng)) return;
+
+   L.marker([lat, lng]).addTo(map);
+ });
 }
 </script>
 
