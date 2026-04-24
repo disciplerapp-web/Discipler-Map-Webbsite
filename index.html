@@ -23,10 +23,9 @@ body { margin:0; padding:0; }
  z-index:9999;
  overflow:auto;
  max-height:200px;
- white-space:pre-wrap; /* ✅ ensures JSON formatting shows properly */
+ white-space:pre-wrap;
 }
 
-/* NEW POPUP DESIGN */
 .user-card {
   min-width:220px;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
@@ -68,13 +67,16 @@ body { margin:0; padding:0; }
 
 .email-btn {
   margin-top:10px;
-  display:inline-block;
-  padding:6px 10px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:36px;
+  height:36px;
   background:#4a6cf7;
   color:white;
-  border-radius:10px;
+  border-radius:50%;
   text-decoration:none;
-  font-size:13px;
+  font-size:16px;
 }
 </style>
 </head>
@@ -142,7 +144,6 @@ async function fetchUsers() {
  const res = await fetch(`${API_BASE}/users`);
  const json = await res.json();
 
- // ✅ NEW: show raw fetched payload EXACTLY as received
  log("📦 RAW USERS RESPONSE:\n" + JSON.stringify(json, null, 2));
 
  return (json || []).map(normalizeUser);
@@ -153,9 +154,6 @@ async function fetchEvents() {
  return [];
 }
 
-/* ---------------------------
- SAFE NORMALIZE (UPDATED)
-----------------------------*/
 function normalizeUser(u) {
  const loc = u.location?.M || u.location;
 
@@ -169,6 +167,7 @@ function normalizeUser(u) {
    username: u.username?.S || u.username,
    church: u.church?.S || u.church,
    churchPosition: u.churchPosition?.S || u.churchPosition,
+   recommended: u.recommended?.S || null, // ✅ added
 
    ghostMode: u.ghostMode?.BOOL === true,
 
@@ -177,13 +176,15 @@ function normalizeUser(u) {
  };
 }
 
-/* ---------------------------
- ICON (UPDATED)
-----------------------------*/
 function createIcon(u) {
 
  const position = (u.churchPosition || "").toLowerCase().trim();
  const isChurchLeader = position === "church leader";
+ const isRecommended = !!u.recommended;
+
+ let bgColor = "#4a6cf7";
+ if (isChurchLeader) bgColor = "#f59e0b";
+ if (isRecommended) bgColor = "#22c55e"; // ✅ green override
 
  return L.divIcon({
    className: "",
@@ -192,7 +193,7 @@ function createIcon(u) {
        width:30px;
        height:30px;
        border-radius:50%;
-       background:${isChurchLeader ? "#f59e0b" : "#4a6cf7"};
+       background:${bgColor};
        display:flex;
        align-items:center;
        justify-content:center;
@@ -209,9 +210,6 @@ function createIcon(u) {
  });
 }
 
-/* ---------------------------
- RENDER MAP (UPDATED POPUP)
-----------------------------*/
 function render() {
  log("🗺️ render markers");
 
@@ -238,11 +236,6 @@ function render() {
        icon: createIcon(u)
      }).addTo(map);
 
-     marker.on("click", () => {
-       map.setView([lat, lng], 15, { animate: true });
-       marker.openPopup();
-     });
-
      const initial = (u.name || "U").charAt(0).toUpperCase();
 
      marker.bindPopup(`
@@ -259,12 +252,17 @@ function render() {
          </div>
 
          ${u.email ? `
-           <a class="email-btn" href="mailto:${u.email}">
-             ✉ Email
+           <a class="email-btn" href="mailto:${u.email}" title="Send Email">
+             ✉
            </a>
          ` : ""}
        </div>
      `);
+
+     marker.on("click", () => {
+       map.setView([lat, lng], 15, { animate: true });
+       marker.openPopup(); // ✅ ensure popup opens
+     });
    });
 
  log("✅ valid markers rendered: " + validCount);
