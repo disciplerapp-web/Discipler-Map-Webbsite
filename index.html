@@ -23,6 +23,7 @@ body { margin:0; padding:0; }
  z-index:9999;
  overflow:auto;
  max-height:200px;
+ white-space:pre-wrap; /* ✅ ensures JSON formatting shows properly */
 }
 
 /* NEW POPUP DESIGN */
@@ -93,7 +94,7 @@ let hasRendered = false;
 
 function log(msg) {
  console.log(msg);
- document.getElementById("log").innerHTML += "<br>" + msg;
+ document.getElementById("log").innerHTML += "\n" + msg;
 }
 
 init();
@@ -141,6 +142,9 @@ async function fetchUsers() {
  const res = await fetch(`${API_BASE}/users`);
  const json = await res.json();
 
+ // ✅ NEW: show raw fetched payload EXACTLY as received
+ log("📦 RAW USERS RESPONSE:\n" + JSON.stringify(json, null, 2));
+
  return (json || []).map(normalizeUser);
 }
 
@@ -164,7 +168,7 @@ function normalizeUser(u) {
    email: u.email?.S || u.email,
    username: u.username?.S || u.username,
    church: u.church?.S || u.church,
-   churchPosition: u.churchPosition?.S || u.churchPosition,   // ✅ ADDED
+   churchPosition: u.churchPosition?.S || u.churchPosition,
 
    ghostMode: u.ghostMode?.BOOL === true,
 
