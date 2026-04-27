@@ -19,12 +19,11 @@ body { margin:0; padding:0; }
  background:white;
  padding:10px;
  font-size:12px;
- max-width:320px;
+ max-width:300px;
  z-index:9999;
  overflow:auto;
- max-height:260px;
+ max-height:200px;
  white-space:pre-wrap;
- border:1px solid #ddd;
 }
 
 /* SEARCH UI */
@@ -78,6 +77,7 @@ body { margin:0; padding:0; }
  background:#ddd;
 }
 
+/* PULSE */
 .pulse {
  animation: pulseAnim 1.2s infinite;
 }
@@ -104,9 +104,6 @@ body { margin:0; padding:0; }
 <script>
 const API_BASE = "https://zjt4sxvh0l.execute-api.eu-north-1.amazonaws.com";
 
-const S3_BASE =
-  "https://discipler221e46f-prod.s3.eu-north-1.amazonaws.com/public/images/";
-
 let map;
 let users = [];
 let events = [];
@@ -121,20 +118,11 @@ function log(msg, data) {
    "\n" + msg + (data ? "\n" + JSON.stringify(data, null, 2) : "");
 }
 
-function debugImage(user, rawKey, finalUrl) {
-  log("🧪 IMAGE DEBUG", {
-    user: user?.username,
-    rawKey,
-    finalUrl,
-    isHttp: finalUrl?.startsWith("http"),
-    isMissing: !finalUrl
-  });
-}
-
 init();
 
 function init() {
- log("🟢uiu INIT MAP START");
+
+ log("🟢 INIT MAP START");
 
  map = L.map('map').setView([59.3293, 18.0686], 10);
 
@@ -147,6 +135,7 @@ function init() {
 }
 
 async function loadData() {
+
  log("📡 FETCHING DATA FROM BACKEND");
 
  const [u, e] = await Promise.all([
@@ -158,6 +147,7 @@ async function loadData() {
  events = e;
 
  log("✅ USERS TOTAL: " + users.length);
+ log("🔥 EVENTS TOTAL: " + events.length);
 
  if (!hasRendered) {
    hasRendered = true;
@@ -167,36 +157,31 @@ async function loadData() {
 
 async function fetchUsers() {
 
+ log("📡 fetchUsers() CALLING API");
+
  const res = await fetch(`${API_BASE}/users`);
  const json = await res.json();
 
- log("📦 RAW USERS RECEIVED", json);
+ log("📦 RAW BACKEND RESPONSE USERS:", json);
 
- return (json || []).map((u, i) => {
+ const mapped = (json || []).map((u, i) => {
    const normalized = normalizeUser(u);
 
-   log("👤 USER " + i, {
-     username: normalized.username,
-     imageKeyRaw: u.imageKey,
-     resolvedImage: normalized.profileImage
-   });
+   log("👤 NORMALIZED USER " + i, normalized);
 
-   debugImage(normalized, u.imageKey, normalized.profileImage);
+   if (!normalized.profileImage) {
+     log("⚠️ Missing profileImage for user: " + (normalized.username || "unknown"));
+   }
 
    return normalized;
  });
+
+ return mapped;
 }
 
 async function fetchEvents() {
- log("📡 EVENTS DISABLED");
+ log("📡 fetchEvents() (disabled)");
  return [];
-}
-
-function getProfileImageUrl(imageKey) {
-  if (!imageKey) return null;
-  if (typeof imageKey === "object") return null;
-  if (imageKey.startsWith("http")) return imageKey;
-  return S3_BASE + imageKey;
 }
 
 function normalizeUser(u) {
@@ -206,19 +191,15 @@ function normalizeUser(u) {
  const latRaw = loc?.latitude?.N ?? loc?.latitude;
  const lngRaw = loc?.longitude?.N ?? loc?.longitude;
 
- const rawKey = u.imageKey?.S || u.imageKey || u.profileImage;
-
  return {
    ...u,
    name: u.name?.S || u.name,
+   email: u.email?.S || u.email,
    username: u.username?.S || u.username,
    church: u.church?.S || u.church,
    churchPosition: u.churchPosition?.S || u.churchPosition,
    bio: u.bio?.S || u.bio,
-
-   imageKeyRaw: rawKey,
-
-   profileImage: getProfileImageUrl(rawKey),
+   profileImage: u.profileImage || u.image || null,
 
    ghostMode: u.ghostMode?.BOOL === true,
 
@@ -266,13 +247,13 @@ function render() {
 
  markers = [];
 
- users.filter(u => !u.ghostMode).forEach((u) => {
+ users.filter(u => !u.ghostMode).forEach((u, idx) => {
 
    const lat = Number(u.latitude);
    const lng = Number(u.longitude);
 
    if (!lat || !lng) {
-     log("❌ INVALID COORDS", u);
+     log("❌ INVALID COORDS for user", u);
      return;
    }
 
@@ -282,44 +263,107 @@ function render() {
 
    marker.userData = u;
 
+   log("📍 MARKER CREATED", {
+     username: u.username,
+     lat,
+     lng,
+     hasImage: !!u.profileImage
+   });
+
    marker.on("click", () => {
-     log("🖱️ CLICK USER", u.username);
+     log("🖱️ MARKER CLICKED", u);
+     selectMarker(marker);
    });
 
    markers.push(marker);
 
-   const imgSrc = u.profileImage || 'https://via.placeholder.com/80';
-
    marker.bindPopup(`
      <div style="min-width:280px;font-family:-apple-system,sans-serif;">
-       <img 
-         src="${imgSrc}"
-         onload="window.__imgOk('${u.username}', this.src)"
-         onerror="window.__imgFail('${u.username}', this.src)"
-         style="width:70px;height:70px;border-radius:50%;object-fit:cover;border:3px solid #ddd;"
-       />
 
-       <div style="margin-top:8px;font-size:12px;">
-         ${u.bio || ""}
+       <div style="display:flex;gap:12px;align-items:flex-start;">
+
+         <div style="display:flex;flex-direction:column;align-items:flex-start;">
+
+           <img src="${u.profileImage || 'https://via.placeholder.com/80'}"
+             onerror="console.log('❌ IMAGE FAILED:', '${u.username}')"
+             style="width:70px;height:70px;border-radius:50%;object-fit:cover;border:3px solid #ddd;"
+           />
+
+           <div style="margin-top:8px;font-size:12px;color:#444;">
+             ${u.bio || ""}
+           </div>
+
+         </div>
+
+         <div style="flex:1;">
+           <div style="font-weight:700;font-size:16px;">
+             ${u.name || "No name"}
+           </div>
+
+           <div style="font-size:12px;color:gray;">
+             @${u.username || "unknown"}
+           </div>
+
+           <div style="font-size:12px;margin-top:4px;">
+             ${u.church || ""}
+           </div>
+         </div>
+
        </div>
+
+       <div style="display:flex;gap:8px;margin-top:12px;">
+
+         <a href="mailto:${u.email || ''}" style="
+           flex:1;
+           background:#e5e5e5;
+           padding:10px;
+           border-radius:8px;
+           text-align:center;
+           text-decoration:none;
+           color:black;
+           font-size:13px;
+         ">✉ Email</a>
+
+         <a href="#" style="
+           flex:1;
+           background:#e5e5e5;
+           padding:10px;
+           border-radius:8px;
+           text-align:center;
+           text-decoration:none;
+           color:black;
+           font-size:13px;
+         ">⬇ Download App</a>
+
+       </div>
+
      </div>
    `);
  });
 
- log("✅ RENDER COMPLETE");
+ log("✅ RENDER COMPLETE - MARKERS: " + markers.length);
 }
 
-/* GLOBAL IMAGE CALLBACKS -> LOG WINDOW */
-window.__imgOk = function(user, src) {
-  log("✅ IMAGE LOADED", { user, src });
-};
+function selectMarker(marker) {
 
-window.__imgFail = function(user, src) {
-  log("❌ IMAGE FAILED", { user, src });
-};
+ if (selectedMarker) {
+   const prev = selectedMarker.getElement()?.querySelector(".marker-inner");
+   if (prev) prev.classList.remove("pulse");
+ }
+
+ selectedMarker = marker;
+
+ const el = marker.getElement()?.querySelector(".marker-inner");
+ if (el) el.classList.add("pulse");
+
+ log("🎯 SELECTED USER", marker.userData);
+
+ marker.openPopup();
+}
 
 /* SEARCH */
 function setupSearch() {
+
  const input = document.getElementById("searchInput");
 
  input.addEventListener("input", () => {
@@ -328,7 +372,8 @@ function setupSearch() {
 
    const results = users.filter(u =>
      (u.name || "").toLowerCase().includes(val) ||
-     (u.username || "").toLowerCase().includes(val)
+     (u.username || "").toLowerCase().includes(val) ||
+     (u.church || "").toLowerCase().includes(val)
    );
 
    renderSearch(results);
@@ -342,15 +387,23 @@ function renderSearch(list) {
 
  list.slice(0, 20).forEach(u => {
 
+   const isChurch = (u.churchPosition || "").toLowerCase().includes("church");
+
    const div = document.createElement("div");
    div.className = "search-item";
 
    div.innerHTML = `
-     <div class="search-icon">👤</div>
+     <div class="search-icon">${isChurch ? "🏛️" : "👤"}</div>
      <div>
        <div><b>${u.name || u.username}</b></div>
+       <div style="font-size:11px;color:gray;">${u.church || ""}</div>
      </div>
    `;
+
+   div.onclick = () => {
+     const m = markers.find(m => m.userData === u);
+     if (m) selectMarker(m);
+   };
 
    box.appendChild(div);
  });
