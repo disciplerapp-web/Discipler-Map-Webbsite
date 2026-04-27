@@ -104,6 +104,16 @@ body { margin:0; padding:0; }
 <script>
 const API_BASE = "https://zjt4sxvh0l.execute-api.eu-north-1.amazonaws.com";
 
+const S3_BASE =
+  "https://discipler2888887321e46f-prod.s3.eu-north-1.amazonaws.com/public/images/";
+
+function getProfileImageUrl(imageKey) {
+  if (!imageKey) return null;
+  if (typeof imageKey === "object") return null;
+  if (imageKey.startsWith("http")) return imageKey;
+  return S3_BASE + imageKey;
+}
+
 let map;
 let users = [];
 let events = [];
@@ -169,10 +179,6 @@ async function fetchUsers() {
 
    log("👤 NORMALIZED USER " + i, normalized);
 
-   if (!normalized.profileImage) {
-     log("⚠️ Missing profileImage for user: " + (normalized.username || "unknown"));
-   }
-
    return normalized;
  });
 
@@ -199,7 +205,8 @@ function normalizeUser(u) {
    church: u.church?.S || u.church,
    churchPosition: u.churchPosition?.S || u.churchPosition,
    bio: u.bio?.S || u.bio,
-   profileImage: u.profileImage || u.image || null,
+
+   profileImage: getProfileImageUrl(u.imageKey?.S || u.imageKey),
 
    ghostMode: u.ghostMode?.BOOL === true,
 
@@ -247,28 +254,18 @@ function render() {
 
  markers = [];
 
- users.filter(u => !u.ghostMode).forEach((u, idx) => {
+ users.filter(u => !u.ghostMode).forEach((u) => {
 
    const lat = Number(u.latitude);
    const lng = Number(u.longitude);
 
-   if (!lat || !lng) {
-     log("❌ INVALID COORDS for user", u);
-     return;
-   }
+   if (!lat || !lng) return;
 
    const marker = L.marker([lat, lng], {
      icon: createIcon(u)
    }).addTo(map);
 
    marker.userData = u;
-
-   log("📍 MARKER CREATED", {
-     username: u.username,
-     lat,
-     lng,
-     hasImage: !!u.profileImage
-   });
 
    marker.on("click", () => {
      log("🖱️ MARKER CLICKED", u);
@@ -285,7 +282,6 @@ function render() {
          <div style="display:flex;flex-direction:column;align-items:flex-start;">
 
            <img src="${u.profileImage || 'https://via.placeholder.com/80'}"
-             onerror="console.log('❌ IMAGE FAILED:', '${u.username}')"
              style="width:70px;height:70px;border-radius:50%;object-fit:cover;border:3px solid #ddd;"
            />
 
@@ -345,19 +341,7 @@ function render() {
 }
 
 function selectMarker(marker) {
-
- if (selectedMarker) {
-   const prev = selectedMarker.getElement()?.querySelector(".marker-inner");
-   if (prev) prev.classList.remove("pulse");
- }
-
  selectedMarker = marker;
-
- const el = marker.getElement()?.querySelector(".marker-inner");
- if (el) el.classList.add("pulse");
-
- log("🎯 SELECTED USER", marker.userData);
-
  marker.openPopup();
 }
 
@@ -387,13 +371,11 @@ function renderSearch(list) {
 
  list.slice(0, 20).forEach(u => {
 
-   const isChurch = (u.churchPosition || "").toLowerCase().includes("church");
-
    const div = document.createElement("div");
    div.className = "search-item";
 
    div.innerHTML = `
-     <div class="search-icon">${isChurch ? "🏛️" : "👤"}</div>
+     <div class="search-icon">👤</div>
      <div>
        <div><b>${u.name || u.username}</b></div>
        <div style="font-size:11px;color:gray;">${u.church || ""}</div>
