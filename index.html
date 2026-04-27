@@ -4,17 +4,17 @@
 <meta charset="utf-8" />
 <title>Map Debug Fixed</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
- 
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
- 
+
 <style>
 body { margin:0; padding:0; }
 #map { position:absolute; top:0; bottom:0; width:100%; }
 
 .log {
  position:absolute;
- top:10px;
+ top:70px;
  right:10px;
  background:white;
  padding:10px;
@@ -24,6 +24,68 @@ body { margin:0; padding:0; }
  overflow:auto;
  max-height:200px;
  white-space:pre-wrap;
+}
+
+/* SEARCH UI */
+#searchContainer {
+ position:absolute;
+ top:10px;
+ right:10px;
+ z-index:10000;
+ width:300px;
+ font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+#searchInput {
+ width:100%;
+ padding:10px;
+ border-radius:8px;
+ border:1px solid #ddd;
+ outline:none;
+}
+
+#searchResults {
+ background:white;
+ margin-top:5px;
+ border-radius:8px;
+ max-height:250px;
+ overflow:auto;
+ box-shadow:0 2px 10px rgba(0,0,0,0.15);
+}
+
+.search-item {
+ display:flex;
+ align-items:center;
+ gap:10px;
+ padding:8px;
+ cursor:pointer;
+ border-bottom:1px solid #eee;
+}
+
+.search-item:hover {
+ background:#f5f5f5;
+}
+
+.search-icon {
+ width:24px;
+ height:24px;
+ border-radius:50%;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ font-size:12px;
+ background:#ddd;
+}
+
+/* PULSATING MARKER */
+.pulse {
+ animation: pulseAnim 1.2s infinite;
+}
+
+@keyframes pulseAnim {
+ 0% { transform: scale(1); box-shadow:0 0 0 0 rgba(74,108,247,0.6); }
+ 70% { transform: scale(1.3); box-shadow:0 0 0 15px rgba(74,108,247,0); }
+ 100% { transform: scale(1); box-shadow:0 0 0 0 rgba(74,108,247,0); }
 }
 
 .user-card {
@@ -49,21 +111,9 @@ body { margin:0; padding:0; }
   font-size:18px;
 }
 
-.name {
-  font-weight:700;
-  font-size:15px;
-}
-
-.username {
-  font-size:12px;
-  color:gray;
-}
-
-.church {
-  font-size:12px;
-  margin-top:2px;
-  color:#444;
-}
+.name { font-weight:700; font-size:15px; }
+.username { font-size:12px; color:gray; }
+.church { font-size:12px; margin-top:2px; color:#444; }
 
 .email-btn {
   margin-top:10px;
@@ -84,6 +134,13 @@ body { margin:0; padding:0; }
 <body>
 
 <div id="map"></div>
+
+<!-- SEARCH UI -->
+<div id="searchContainer">
+  <input id="searchInput" placeholder="Search users..." />
+  <div id="searchResults"></div>
+</div>
+
 <div class="log" id="log">Logs...</div>
 
 <script>
@@ -94,6 +151,9 @@ let users = [];
 let events = [];
 let hasRendered = false;
 
+let markers = [];
+let selectedMarker = null;
+
 function log(msg) {
  console.log(msg);
  document.getElementById("log").innerHTML += "\n" + msg;
@@ -102,7 +162,7 @@ function log(msg) {
 init();
 
 function init() {
- log("🟢kallers init map");
+ log("🟢 init map");
 
  map = L.map('map').setView([59.3293, 18.0686], 10);
 
@@ -111,6 +171,7 @@ function init() {
  }).addTo(map);
 
  loadData();
+ setupSearch();
 }
 
 async function loadData() {
@@ -126,7 +187,6 @@ async function loadData() {
    events = e;
 
    log("👤 users loaded: " + users.length);
-   log("🔥 events loaded: " + events.length);
 
    if (!hasRendered) {
      hasRendered = true;
@@ -139,18 +199,12 @@ async function loadData() {
 }
 
 async function fetchUsers() {
- log("📡 fetchUsers");
-
  const res = await fetch(`${API_BASE}/users`);
  const json = await res.json();
-
- log("📦 RAW USERS RESPONSE:\n" + JSON.stringify(json, null, 2));
-
  return (json || []).map(normalizeUser);
 }
 
 async function fetchEvents() {
- log("📡 fetchEvents (disabled for now)");
  return [];
 }
 
@@ -167,29 +221,23 @@ function normalizeUser(u) {
    username: u.username?.S || u.username,
    church: u.church?.S || u.church,
    churchPosition: u.churchPosition?.S || u.churchPosition,
-   recommended: u.recommended?.S || null, // ✅ added
-
    ghostMode: u.ghostMode?.BOOL === true,
 
-   latitude: latRaw !== undefined && latRaw !== null ? parseFloat(latRaw) : null,
-   longitude: lngRaw !== undefined && lngRaw !== null ? parseFloat(lngRaw) : null
+   latitude: parseFloat(latRaw),
+   longitude: parseFloat(lngRaw)
  };
 }
 
 function createIcon(u) {
-
  const position = (u.churchPosition || "").toLowerCase().trim();
  const isChurchLeader = position === "church leader";
- const isRecommended = !!u.recommended;
 
- let bgColor = "#4a6cf7";
- if (isChurchLeader) bgColor = "#f59e0b";
- if (isRecommended) bgColor = "#22c55e"; // ✅ green override
+ let bgColor = isChurchLeader ? "#f59e0b" : "#4a6cf7";
 
  return L.divIcon({
    className: "",
    html: `
-     <div style="
+     <div class="marker-inner" style="
        width:30px;
        height:30px;
        border-radius:50%;
@@ -211,15 +259,11 @@ function createIcon(u) {
 }
 
 function render() {
- log("🗺️ render markers");
-
  map.eachLayer(layer => {
-   if (layer instanceof L.Marker) {
-     map.removeLayer(layer);
-   }
+   if (layer instanceof L.Marker) map.removeLayer(layer);
  });
 
- let validCount = 0;
+ markers = [];
 
  users
    .filter(u => !u.ghostMode)
@@ -227,53 +271,84 @@ function render() {
 
      const lat = Number(u.latitude);
      const lng = Number(u.longitude);
-
-     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-
-     validCount++;
+     if (!lat || !lng) return;
 
      const marker = L.marker([lat, lng], {
        icon: createIcon(u)
      }).addTo(map);
 
-     const initial = (u.name || "U").charAt(0).toUpperCase();
-
-     marker.bindPopup(`
-       <div class="user-card">
-         
-         <div class="user-header">
-           <div class="avatar">${initial}</div>
-
-           <div>
-             <div class="name">${u.name || "No name"}</div>
-             <div class="username">@${u.username || "unknown"}</div>
-             <div class="church">${u.church || ""}</div>
-           </div>
-         </div>
-
-         ${u.email ? `
-           <a class="email-btn" href="mailto:${u.email}" title="Send Email">
-             ✉
-           </a>
-         ` : ""}
-       </div>
-     `);
+     marker.userData = u;
 
      marker.on("click", () => {
-       map.setView([lat, lng], 15, { animate: true });
-       marker.openPopup(); // ✅ ensure popup opens
+       selectMarker(marker);
      });
+
+     markers.push(marker);
+
+     marker.bindPopup(`<b>${u.name}</b>`);
    });
+}
 
- log("✅ valid markers rendered: " + validCount);
+function selectMarker(marker) {
 
- events.forEach(e => {
-   if (!e.location) return;
+ if (selectedMarker) {
+   const prev = selectedMarker.getElement()?.querySelector(".marker-inner");
+   if (prev) prev.classList.remove("pulse");
+ }
 
-   const [lat, lng] = e.location.split(",").map(Number);
-   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+ selectedMarker = marker;
 
-   L.marker([lat, lng]).addTo(map);
+ const el = marker.getElement()?.querySelector(".marker-inner");
+ if (el) el.classList.add("pulse");
+
+ marker.openPopup();
+}
+
+/* SEARCH */
+function setupSearch() {
+ const input = document.getElementById("searchInput");
+
+ input.addEventListener("input", () => {
+   const val = input.value.toLowerCase();
+   const results = users.filter(u =>
+     (u.name || "").toLowerCase().includes(val) ||
+     (u.username || "").toLowerCase().includes(val) ||
+     (u.church || "").toLowerCase().includes(val)
+   );
+
+   renderSearch(results);
+ });
+}
+
+function renderSearch(list) {
+ const box = document.getElementById("searchResults");
+ box.innerHTML = "";
+
+ list.slice(0, 20).forEach(u => {
+
+   const isChurch = (u.churchPosition || "").toLowerCase().includes("church");
+
+   const div = document.createElement("div");
+   div.className = "search-item";
+
+   div.innerHTML = `
+     <div class="search-icon">${isChurch ? "🏛️" : "👤"}</div>
+     <div>
+       <div><b>${u.name || u.username}</b></div>
+       <div style="font-size:11px;color:gray;">
+         ${u.church || ""}
+       </div>
+     </div>
+   `;
+
+   div.onclick = () => {
+     const m = markers.find(m => m.userData === u);
+     if (m) {
+       selectMarker(m);
+     }
+   };
+
+   box.appendChild(div);
  });
 }
 </script>
