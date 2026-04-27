@@ -112,7 +112,17 @@ let hasRendered = false;
 let markers = [];
 let selectedMarker = null;
 
+function log(msg, data) {
+ console.log(msg, data || "");
+ document.getElementById("log").innerHTML +=
+   "\n" + msg + (data ? "\n" + JSON.stringify(data, null, 2) : "");
+}
+
+init();
+
 function init() {
+
+ log("🟢 INIT MAP START");
 
  map = L.map('map').setView([59.3293, 18.0686], 10);
 
@@ -124,9 +134,9 @@ function init() {
  setupSearch();
 }
 
-init();
-
 async function loadData() {
+
+ log("📡 FETCHING DATA FROM BACKEND");
 
  const [u, e] = await Promise.all([
    fetchUsers(),
@@ -136,6 +146,9 @@ async function loadData() {
  users = u;
  events = e;
 
+ log("✅ USERS TOTAL: " + users.length);
+ log("🔥 EVENTS TOTAL: " + events.length);
+
  if (!hasRendered) {
    hasRendered = true;
    render();
@@ -143,16 +156,36 @@ async function loadData() {
 }
 
 async function fetchUsers() {
+
+ log("📡 fetchUsers() CALLING API");
+
  const res = await fetch(`${API_BASE}/users`);
  const json = await res.json();
- return (json || []).map(normalizeUser);
+
+ log("📦 RAW BACKEND RESPONSE USERS:", json);
+
+ const mapped = (json || []).map((u, i) => {
+   const normalized = normalizeUser(u);
+
+   log("👤 NORMALIZED USER " + i, normalized);
+
+   if (!normalized.profileImage) {
+     log("⚠️ Missing profileImage for user: " + (normalized.username || "unknown"));
+   }
+
+   return normalized;
+ });
+
+ return mapped;
 }
 
 async function fetchEvents() {
+ log("📡 fetchEvents() (disabled)");
  return [];
 }
 
 function normalizeUser(u) {
+
  const loc = u.location?.M || u.location;
 
  const latRaw = loc?.latitude?.N ?? loc?.latitude;
@@ -165,7 +198,9 @@ function normalizeUser(u) {
    username: u.username?.S || u.username,
    church: u.church?.S || u.church,
    churchPosition: u.churchPosition?.S || u.churchPosition,
-   bio: u.bio?.S || u.bio,   // ✅ ADDED
+   bio: u.bio?.S || u.bio,
+   profileImage: u.profileImage || u.image || null,
+
    ghostMode: u.ghostMode?.BOOL === true,
 
    latitude: parseFloat(latRaw),
@@ -204,17 +239,23 @@ function createIcon(u) {
 
 function render() {
 
+ log("🗺️ RENDERING MARKERS");
+
  map.eachLayer(layer => {
    if (layer instanceof L.Marker) map.removeLayer(layer);
  });
 
  markers = [];
 
- users.filter(u => !u.ghostMode).forEach(u => {
+ users.filter(u => !u.ghostMode).forEach((u, idx) => {
 
    const lat = Number(u.latitude);
    const lng = Number(u.longitude);
-   if (!lat || !lng) return;
+
+   if (!lat || !lng) {
+     log("❌ INVALID COORDS for user", u);
+     return;
+   }
 
    const marker = L.marker([lat, lng], {
      icon: createIcon(u)
@@ -222,35 +263,39 @@ function render() {
 
    marker.userData = u;
 
+   log("📍 MARKER CREATED", {
+     username: u.username,
+     lat,
+     lng,
+     hasImage: !!u.profileImage
+   });
+
    marker.on("click", () => {
+     log("🖱️ MARKER CLICKED", u);
      selectMarker(marker);
    });
 
    markers.push(marker);
 
-   /* POPUP UPDATED LAYOUT */
    marker.bindPopup(`
      <div style="min-width:280px;font-family:-apple-system,sans-serif;">
 
        <div style="display:flex;gap:12px;align-items:flex-start;">
 
-         <!-- LEFT: IMAGE -->
          <div style="display:flex;flex-direction:column;align-items:flex-start;">
 
            <img src="${u.profileImage || 'https://via.placeholder.com/80'}"
+             onerror="console.log('❌ IMAGE FAILED:', '${u.username}')"
              style="width:70px;height:70px;border-radius:50%;object-fit:cover;border:3px solid #ddd;"
            />
 
-           <!-- BIO UNDER IMAGE -->
-           <div style="margin-top:8px;font-size:12px;color:#444;text-align:left;">
+           <div style="margin-top:8px;font-size:12px;color:#444;">
              ${u.bio || ""}
            </div>
 
          </div>
 
-         <!-- RIGHT: INFO -->
          <div style="flex:1;">
-
            <div style="font-weight:700;font-size:16px;">
              ${u.name || "No name"}
            </div>
@@ -262,12 +307,10 @@ function render() {
            <div style="font-size:12px;margin-top:4px;">
              ${u.church || ""}
            </div>
-
          </div>
 
        </div>
 
-       <!-- BUTTONS -->
        <div style="display:flex;gap:8px;margin-top:12px;">
 
          <a href="mailto:${u.email || ''}" style="
@@ -297,9 +340,10 @@ function render() {
      </div>
    `);
  });
+
+ log("✅ RENDER COMPLETE - MARKERS: " + markers.length);
 }
 
-/* CLICK HANDLER (NO ZOOM, POPUP STILL OPENS) */
 function selectMarker(marker) {
 
  if (selectedMarker) {
@@ -311,6 +355,8 @@ function selectMarker(marker) {
 
  const el = marker.getElement()?.querySelector(".marker-inner");
  if (el) el.classList.add("pulse");
+
+ log("🎯 SELECTED USER", marker.userData);
 
  marker.openPopup();
 }
