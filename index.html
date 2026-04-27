@@ -26,7 +26,7 @@ body { margin:0; padding:0; }
  white-space:pre-wrap;
 }
 
-/* SEARCH */
+/* SEARCH UI */
 #searchContainer {
  position:absolute;
  top:10px;
@@ -62,7 +62,9 @@ body { margin:0; padding:0; }
  border-bottom:1px solid #eee;
 }
 
-.search-item:hover { background:#f5f5f5; }
+.search-item:hover {
+ background:#f5f5f5;
+}
 
 .search-icon {
  width:24px;
@@ -97,17 +99,21 @@ body { margin:0; padding:0; }
   <div id="searchResults"></div>
 </div>
 
-<div class="log" id="log"></div>
+<div class="log" id="log">Logs...</div>
 
 <script>
 const API_BASE = "https://zjt4sxvh0l.execute-api.eu-north-1.amazonaws.com";
 
 let map;
 let users = [];
+let events = [];
+let hasRendered = false;
+
 let markers = [];
 let selectedMarker = null;
 
 function init() {
+
  map = L.map('map').setView([59.3293, 18.0686], 10);
 
  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -121,14 +127,36 @@ function init() {
 init();
 
 async function loadData() {
+
+ const [u, e] = await Promise.all([
+   fetchUsers(),
+   fetchEvents()
+ ]);
+
+ users = u;
+ events = e;
+
+ if (!hasRendered) {
+   hasRendered = true;
+   render();
+ }
+}
+
+async function fetchUsers() {
  const res = await fetch(`${API_BASE}/users`);
  const json = await res.json();
- users = (json || []).map(normalizeUser);
- render();
+ return (json || []).map(normalizeUser);
+}
+
+async function fetchEvents() {
+ return [];
 }
 
 function normalizeUser(u) {
  const loc = u.location?.M || u.location;
+
+ const latRaw = loc?.latitude?.N ?? loc?.latitude;
+ const lngRaw = loc?.longitude?.N ?? loc?.longitude;
 
  return {
    ...u,
@@ -136,44 +164,59 @@ function normalizeUser(u) {
    email: u.email?.S || u.email,
    username: u.username?.S || u.username,
    church: u.church?.S || u.church,
-   bio: u.bio?.S || u.bio,
-   profileImage: u.profileImage?.S || u.profileImage,
-   instagram: u.instagram,
-   tiktok: u.tiktok,
-   youtube: u.youtube,
-   latitude: parseFloat(loc?.latitude?.N ?? loc?.latitude),
-   longitude: parseFloat(loc?.longitude?.N ?? loc?.longitude)
+   churchPosition: u.churchPosition?.S || u.churchPosition,
+   bio: u.bio?.S || u.bio,   // ✅ ADDED
+   ghostMode: u.ghostMode?.BOOL === true,
+
+   latitude: parseFloat(latRaw),
+   longitude: parseFloat(lngRaw)
  };
 }
 
 function createIcon(u) {
+
+ const isChurchLeader = (u.churchPosition || "").toLowerCase() === "church leader";
+ const bg = isChurchLeader ? "#f59e0b" : "#4a6cf7";
+
  return L.divIcon({
    className: "",
    html: `
      <div class="marker-inner" style="
-       width:30px;height:30px;
+       width:30px;
+       height:30px;
        border-radius:50%;
-       background:#4a6cf7;
-       display:flex;align-items:center;justify-content:center;
+       background:${bg};
+       display:flex;
+       align-items:center;
+       justify-content:center;
        color:white;
-     ">👤</div>
+       font-size:14px;
+       border:2px solid white;
+       box-shadow:0 2px 6px rgba(0,0,0,0.3);
+     ">
+       ${isChurchLeader ? "🏛️" : "👤"}
+     </div>
    `,
-   iconSize:[30,30],
-   iconAnchor:[15,15]
+   iconSize: [30, 30],
+   iconAnchor: [15, 15]
  });
 }
 
 function render() {
+
  map.eachLayer(layer => {
    if (layer instanceof L.Marker) map.removeLayer(layer);
  });
 
  markers = [];
 
- users.forEach(u => {
-   if (!u.latitude || !u.longitude) return;
+ users.filter(u => !u.ghostMode).forEach(u => {
 
-   const marker = L.marker([u.latitude, u.longitude], {
+   const lat = Number(u.latitude);
+   const lng = Number(u.longitude);
+   if (!lat || !lng) return;
+
+   const marker = L.marker([lat, lng], {
      icon: createIcon(u)
    }).addTo(map);
 
@@ -181,74 +224,82 @@ function render() {
 
    marker.on("click", () => {
      selectMarker(marker);
-     marker.openPopup();
    });
 
-   marker.bindPopup(buildPopup(u));
-
    markers.push(marker);
+
+   /* POPUP UPDATED LAYOUT */
+   marker.bindPopup(`
+     <div style="min-width:280px;font-family:-apple-system,sans-serif;">
+
+       <div style="display:flex;gap:12px;align-items:flex-start;">
+
+         <!-- LEFT: IMAGE -->
+         <div style="display:flex;flex-direction:column;align-items:flex-start;">
+
+           <img src="${u.profileImage || 'https://via.placeholder.com/80'}"
+             style="width:70px;height:70px;border-radius:50%;object-fit:cover;border:3px solid #ddd;"
+           />
+
+           <!-- BIO UNDER IMAGE -->
+           <div style="margin-top:8px;font-size:12px;color:#444;text-align:left;">
+             ${u.bio || ""}
+           </div>
+
+         </div>
+
+         <!-- RIGHT: INFO -->
+         <div style="flex:1;">
+
+           <div style="font-weight:700;font-size:16px;">
+             ${u.name || "No name"}
+           </div>
+
+           <div style="font-size:12px;color:gray;">
+             @${u.username || "unknown"}
+           </div>
+
+           <div style="font-size:12px;margin-top:4px;">
+             ${u.church || ""}
+           </div>
+
+         </div>
+
+       </div>
+
+       <!-- BUTTONS -->
+       <div style="display:flex;gap:8px;margin-top:12px;">
+
+         <a href="mailto:${u.email || ''}" style="
+           flex:1;
+           background:#e5e5e5;
+           padding:10px;
+           border-radius:8px;
+           text-align:center;
+           text-decoration:none;
+           color:black;
+           font-size:13px;
+         ">✉ Email</a>
+
+         <a href="#" style="
+           flex:1;
+           background:#e5e5e5;
+           padding:10px;
+           border-radius:8px;
+           text-align:center;
+           text-decoration:none;
+           color:black;
+           font-size:13px;
+         ">⬇ Download App</a>
+
+       </div>
+
+     </div>
+   `);
  });
 }
 
-/* POPUP UI (UPDATED AS REQUESTED) */
-function buildPopup(u) {
-
- const social = [];
-
- if (u.instagram) social.push("📸");
- if (u.tiktok) social.push("🎵");
- if (u.youtube) social.push("▶️");
-
- return `
- <div style="width:300px;font-family:-apple-system,sans-serif;">
-
-   <!-- TOP ROW -->
-   <div style="display:flex;gap:10px;align-items:flex-start;">
-
-     <img src="${u.profileImage || 'https://via.placeholder.com/70'}"
-       style="width:70px;height:70px;border-radius:50%;object-fit:cover;" />
-
-     <div style="text-align:left;">
-       <div style="font-weight:700;">${u.name || ""}</div>
-       <div style="font-size:12px;color:gray;">@${u.username || ""}</div>
-       <div style="font-size:12px;">${u.church || ""}</div>
-     </div>
-
-   </div>
-
-   <!-- BIO -->
-   <div style="margin-top:10px;text-align:left;font-size:12px;color:#444;">
-     ${u.bio || ""}
-   </div>
-
-   <!-- BUTTONS -->
-   <div style="display:flex;gap:10px;margin-top:10px;">
-
-     <a href="mailto:${u.email || ''}" style="
-       background:#e5e5e5;
-       padding:8px 12px;
-       border-radius:6px;
-       text-decoration:none;
-       font-size:12px;
-       display:flex;
-       align-items:center;
-     ">✉ Email</a>
-
-     <button style="
-       background:#e5e5e5;
-       padding:8px 12px;
-       border-radius:6px;
-       border:none;
-       font-size:12px;
-     ">Download App</button>
-
-   </div>
-
- </div>
- `;
-}
-
-/* SELECT (NO ZOOM) */
+/* CLICK HANDLER (NO ZOOM, POPUP STILL OPENS) */
 function selectMarker(marker) {
 
  if (selectedMarker) {
@@ -266,9 +317,11 @@ function selectMarker(marker) {
 
 /* SEARCH */
 function setupSearch() {
+
  const input = document.getElementById("searchInput");
 
  input.addEventListener("input", () => {
+
    const val = input.value.toLowerCase();
 
    const results = users.filter(u =>
@@ -282,16 +335,19 @@ function setupSearch() {
 }
 
 function renderSearch(list) {
+
  const box = document.getElementById("searchResults");
  box.innerHTML = "";
 
- list.slice(0,20).forEach(u => {
+ list.slice(0, 20).forEach(u => {
+
+   const isChurch = (u.churchPosition || "").toLowerCase().includes("church");
 
    const div = document.createElement("div");
    div.className = "search-item";
 
    div.innerHTML = `
-     <div class="search-icon">👤</div>
+     <div class="search-icon">${isChurch ? "🏛️" : "👤"}</div>
      <div>
        <div><b>${u.name || u.username}</b></div>
        <div style="font-size:11px;color:gray;">${u.church || ""}</div>
@@ -300,10 +356,7 @@ function renderSearch(list) {
 
    div.onclick = () => {
      const m = markers.find(m => m.userData === u);
-     if (m) {
-       selectMarker(m);
-       m.openPopup();
-     }
+     if (m) selectMarker(m);
    };
 
    box.appendChild(div);
