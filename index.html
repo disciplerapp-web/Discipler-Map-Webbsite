@@ -200,7 +200,7 @@ function normalizeUser(u) {
    churchPosition: u.churchPosition?.S || u.churchPosition,
    bio: u.bio?.S || u.bio,
    profileImage: u.imageKey
-   ? `https://discipler221e46f-prod.s3.eu-north-1.amazonaws.com/public/profilePics/${u.imageKey}/profile.jpg`
+   ? `https://discipler221e46f-prod.s3.eu-north-1.amazonaws.com/profilePics/${u.imageKey}/profile.jpg`
    : null,
 
    ghostMode: u.ghostMode?.BOOL === true,
