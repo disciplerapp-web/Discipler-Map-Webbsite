@@ -88,68 +88,78 @@ body { margin:0; padding:0; }
  100% { transform: scale(1); box-shadow:0 0 0 0 rgba(74,108,247,0); }
 }
 
-/* ========================= */
-/* NEW LEFT SLIDE PANEL */
-/* ========================= */
+/* =========================
+   ✅ ADDED SIDE PANEL
+========================= */
 
 #sidePanel {
  position:absolute;
  top:0;
  left:0;
  height:100%;
- width:16vw;
+ width:16.6vw;
+ min-width:260px;
+ max-width:340px;
  background:white;
  z-index:9998;
- transform:translateX(-100%);
+ transform:translateX(-110%);
  transition:transform 0.35s ease;
- box-shadow:2px 0 20px rgba(0,0,0,0.2);
+ box-shadow:2px 0 20px rgba(0,0,0,0.15);
  font-family:-apple-system, BlinkMacSystemFont, sans-serif;
- padding:20px;
- overflow-y:auto;
+ padding:16px;
+ overflow:auto;
 }
 
 #sidePanel.active {
  transform:translateX(0);
 }
 
-#sidePanel img {
+.sideProfileImg {
  width:110px;
  height:110px;
  border-radius:50%;
  object-fit:cover;
- margin-bottom:15px;
+ border:3px solid #ddd;
+ margin-top:10px;
 }
 
-#sidePanel .username {
- font-size:18px;
+.sideName {
+ font-size:20px;
  font-weight:700;
+ margin-top:12px;
 }
 
-#sidePanel .name {
- font-size:14px;
- color:gray;
- margin-bottom:10px;
-}
-
-#sidePanel .church {
+.sideUsername {
  font-size:13px;
- margin-bottom:10px;
+ color:gray;
 }
 
-#sidePanel .bio {
+.sideChurch {
+ font-size:13px;
+ margin-top:6px;
+ color:#333;
+}
+
+.sideBio {
  font-size:12px;
- margin-bottom:20px;
+ margin-top:10px;
  color:#444;
 }
 
-#sidePanel button {
- width:100%;
- padding:10px;
- margin-top:8px;
- border:none;
- border-radius:8px;
+.sideButtons {
+ display:flex;
+ flex-direction:column;
+ gap:10px;
+ margin-top:16px;
+}
+
+.sideBtn {
  background:#e5e5e5;
- cursor:pointer;
+ padding:10px;
+ border-radius:10px;
+ text-align:center;
+ text-decoration:none;
+ color:black;
  font-size:13px;
  display:flex;
  align-items:center;
@@ -157,8 +167,9 @@ body { margin:0; padding:0; }
  gap:8px;
 }
 
-#sidePanel button i {
- font-size:16px;
+.sideBtn svg {
+ width:18px;
+ height:18px;
 }
 
 </style>
@@ -168,15 +179,15 @@ body { margin:0; padding:0; }
 
 <div id="map"></div>
 
-<!-- NEW SIDE PANEL -->
-<div id="sidePanel"></div>
-
 <div id="searchContainer">
   <input id="searchInput" placeholder="Search users..." />
   <div id="searchResults"></div>
 </div>
 
-<div class="log" id="log">LUUogs...</div>
+<!-- ✅ ADDED SIDE PANEL -->
+<div id="sidePanel"></div>
+
+<div class="log" id="log">Logs...</div>
 
 <script>
 const API_BASE = "https://zjt4sxvh0l.execute-api.eu-north-1.amazonaws.com";
@@ -189,44 +200,6 @@ let hasRendered = false;
 let markers = [];
 let selectedMarker = null;
 
-/* ========================= */
-/* NEW: SIDE PANEL STATE */
-/* ========================= */
-
-let selectedUser = null;
-
-function openSidePanel(u) {
-
- selectedUser = u;
-
- const panel = document.getElementById("sidePanel");
-
- panel.innerHTML = `
-   <img src="${u.profileImage || 'https://via.placeholder.com/120'}" />
-
-   <div class="username">@${u.username || "unknown"}</div>
-   <div class="name">${u.name || "No name"}</div>
-   <div class="church">${u.church || ""}</div>
-
-   <div class="bio">${u.bio || ""}</div>
-
-   <button onclick="window.location.href='mailto:${u.email || ''}'">
-     <i>✉</i> Email
-   </button>
-
-   <button>
-     ⬇ Download App
-   </button>
- `;
-
- panel.classList.add("active");
-}
-
-function closeSidePanel() {
- document.getElementById("sidePanel").classList.remove("active");
- selectedUser = null;
-}
-
 function log(msg, data) {
  console.log(msg, data || "");
  document.getElementById("log").innerHTML +=
@@ -237,7 +210,7 @@ init();
 
 function init() {
 
- log("🟢SST INIT MAP START");
+ log("🟢ppgy INIT MAP START");
 
  map = L.map('map').setView([59.3293, 18.0686], 10);
 
@@ -248,13 +221,13 @@ function init() {
  loadData();
  setupSearch();
 
- /* CLOSE PANEL WHEN CLICKING MAP */
- map.on("click", () => {
-   closeSidePanel();
- });
+ // ✅ ADDED: click outside hides panel
+ map.on("click", hideSidePanel);
 }
 
 async function loadData() {
+
+ log("📡 FETCHING DATA FROM BACKEND");
 
  const [u, e] = await Promise.all([
    fetchUsers(),
@@ -264,6 +237,9 @@ async function loadData() {
  users = u;
  events = e;
 
+ log("✅ USERS TOTAL: " + users.length);
+ log("🔥 EVENTS TOTAL: " + events.length);
+
  if (!hasRendered) {
    hasRendered = true;
    render();
@@ -272,15 +248,30 @@ async function loadData() {
 
 async function fetchUsers() {
 
+ log("📡 fetchUsers() CALLING API");
+
  const res = await fetch(`${API_BASE}/users`);
  const json = await res.json();
 
- const mapped = (json || []).map((u, i) => normalizeUser(u));
+ log("📦 RAW BACKEND RESPONSE USERS:", json);
+
+ const mapped = (json || []).map((u, i) => {
+   const normalized = normalizeUser(u);
+
+   log("👤 NORMALIZED USER " + i, normalized);
+
+   if (!normalized.profileImage) {
+     log("⚠️ Missing profileImage for user: " + (normalized.username || "unknown"));
+   }
+
+   return normalized;
+ });
 
  return mapped;
 }
 
 async function fetchEvents() {
+ log("📡 fetchEvents() (disabled)");
  return [];
 }
 
@@ -291,18 +282,21 @@ function normalizeUser(u) {
  const latRaw = loc?.latitude?.N ?? loc?.latitude;
  const lngRaw = loc?.longitude?.N ?? loc?.longitude;
  const imageKey = u.imageKey?.S || u.imageKey;
-
+ 
  return {
    ...u,
    name: u.name?.S || u.name,
    email: u.email?.S || u.email,
    username: u.username?.S || u.username,
    church: u.church?.S || u.church,
+   churchPosition: u.churchPosition?.S || u.churchPosition,
    bio: u.bio?.S || u.bio,
    profileImage: imageKey
      ? `https://discipler221e46f-prod.s3.eu-north-1.amazonaws.com/public/profilePics/${imageKey}/profile.jpg`
      : null,
+
    ghostMode: u.ghostMode?.BOOL === true,
+
    latitude: parseFloat(latRaw),
    longitude: parseFloat(lngRaw)
  };
@@ -339,16 +333,23 @@ function createIcon(u) {
 
 function render() {
 
+ log("🗺️ RENDERING MARKERS");
+
  map.eachLayer(layer => {
    if (layer instanceof L.Marker) map.removeLayer(layer);
  });
 
  markers = [];
 
- users.filter(u => !u.ghostMode).forEach((u) => {
+ users.filter(u => !u.ghostMode).forEach((u, idx) => {
 
    const lat = Number(u.latitude);
    const lng = Number(u.longitude);
+
+   if (!lat || !lng) {
+     log("❌ INVALID COORDS for user", u);
+     return;
+   }
 
    const marker = L.marker([lat, lng], {
      icon: createIcon(u)
@@ -356,45 +357,71 @@ function render() {
 
    marker.userData = u;
 
-   marker.bindPopup(`
-     <div style="min-width:280px;font-family:-apple-system,sans-serif;">
-       <div style="display:flex;gap:12px;align-items:flex-start;">
-         <img src="${u.profileImage || 'https://via.placeholder.com/80'}"
-         style="width:70px;height:70px;border-radius:50%;object-fit:cover;border:3px solid #ddd;" />
-         <div>
-           <div style="font-weight:700;">${u.name}</div>
-           <div style="color:gray;">@${u.username}</div>
-           <div>${u.church || ""}</div>
-         </div>
-       </div>
-     </div>
-   `);
-
    marker.on("click", () => {
+     log("🖱️ MARKER CLICKED", u);
      selectMarker(marker);
-     openSidePanel(u);
+     showSidePanel(u); // ✅ ADDED
    });
 
    markers.push(marker);
  });
+
+ log("✅ RENDER COMPLETE - MARKERS: " + markers.length);
 }
 
 function selectMarker(marker) {
 
- if (selectedMarker) {
-   const prev = selectedMarker.getElement()?.querySelector(".marker-inner");
-   if (prev) prev.classList.remove("pulse");
- }
+  if (selectedMarker) {
+    const prev = selectedMarker.getElement()?.querySelector(".marker-inner");
+    if (prev) prev.classList.remove("pulse");
+  }
 
- selectedMarker = marker;
+  selectedMarker = marker;
 
- const el = marker.getElement()?.querySelector(".marker-inner");
- if (el) el.classList.add("pulse");
+  const el = marker.getElement()?.querySelector(".marker-inner");
+  if (el) el.classList.add("pulse");
 
- map.setView(marker.getLatLng(), map.getZoom());
- marker.openPopup();
+  map.setView(marker.getLatLng(), map.getZoom());
+  marker.openPopup();
 }
 
+/* =========================
+   ✅ SIDE PANEL LOGIC
+========================= */
+
+function showSidePanel(u) {
+
+ const panel = document.getElementById("sidePanel");
+
+ panel.innerHTML = `
+   <img class="sideProfileImg" src="${u.profileImage || 'https://via.placeholder.com/100'}"/>
+
+   <div class="sideName">${u.name || ""}</div>
+   <div class="sideUsername">@${u.username || ""}</div>
+   <div class="sideChurch">${u.church || ""}</div>
+   <div class="sideBio">${u.bio || ""}</div>
+
+   <div class="sideButtons">
+
+     <a class="sideBtn" href="mailto:${u.email || ''}">
+       ✉ <span>Email</span>
+     </a>
+
+     <a class="sideBtn" href="#">
+       ⬇ Download App
+     </a>
+
+   </div>
+ `;
+
+ panel.classList.add("active");
+}
+
+function hideSidePanel() {
+ document.getElementById("sidePanel").classList.remove("active");
+}
+
+/* SEARCH */
 function setupSearch() {
 
  const input = document.getElementById("searchInput");
@@ -405,7 +432,8 @@ function setupSearch() {
 
    const results = users.filter(u =>
      (u.name || "").toLowerCase().includes(val) ||
-     (u.username || "").toLowerCase().includes(val)
+     (u.username || "").toLowerCase().includes(val) ||
+     (u.church || "").toLowerCase().includes(val)
    );
 
    renderSearch(results);
@@ -422,13 +450,19 @@ function renderSearch(list) {
    const div = document.createElement("div");
    div.className = "search-item";
 
-   div.innerHTML = `<div><b>${u.name}</b></div>`;
+   div.innerHTML = `
+     <div class="search-icon">👤</div>
+     <div>
+       <div><b>${u.name || u.username}</b></div>
+       <div style="font-size:11px;color:gray;">${u.church || ""}</div>
+     </div>
+   `;
 
    div.onclick = () => {
      const m = markers.find(m => m.userData.username === u.username);
      if (m) {
        selectMarker(m);
-       openSidePanel(u);
+       showSidePanel(u); // ✅ ADDED
      }
    };
 
