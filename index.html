@@ -272,13 +272,6 @@ function render() {
      hasImage: !!u.profileImage
    });
 
-   marker.on("click", () => {
-     log("🖱️ MARKER CLICKED", u);
-     selectMarker(marker);
-   });
-
-   markers.push(marker);
-
    marker.bindPopup(`
      <div style="min-width:280px;font-family:-apple-system,sans-serif;">
 
@@ -341,6 +334,13 @@ function render() {
 
      </div>
    `);
+  
+   marker.on("click", () => {
+     log("🖱️ MARKER CLICKED", u);
+     selectMarker(marker);
+   });
+
+   markers.push(marker);
  });
 
  log("✅ RENDER COMPLETE - MARKERS: " + markers.length);
@@ -348,19 +348,22 @@ function render() {
 
 function selectMarker(marker) {
 
- if (selectedMarker) {
-   const prev = selectedMarker.getElement()?.querySelector(".marker-inner");
-   if (prev) prev.classList.remove("pulse");
- }
+  if (selectedMarker) {
+    const prev = selectedMarker.getElement()?.querySelector(".marker-inner");
+    if (prev) prev.classList.remove("pulse");
+  }
 
- selectedMarker = marker;
+  selectedMarker = marker;
 
- const el = marker.getElement()?.querySelector(".marker-inner");
- if (el) el.classList.add("pulse");
+  const el = marker.getElement()?.querySelector(".marker-inner");
+  if (el) el.classList.add("pulse");
 
- log("🎯 SELECTED USER", marker.userData);
+  log("🎯 SELECTED USER", marker.userData);
 
- marker.openPopup();
+  // ✅ Ensure marker is focused before opening popup
+  map.setView(marker.getLatLng(), map.getZoom());
+
+  marker.openPopup();
 }
 
 /* SEARCH */
@@ -403,7 +406,7 @@ function renderSearch(list) {
    `;
 
    div.onclick = () => {
-     const m = markers.find(m => m.userData === u);
+     const m = markers.find(m => m.userData.username === u.username);
      if (m) selectMarker(m);
    };
 
