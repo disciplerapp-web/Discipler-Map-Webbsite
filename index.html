@@ -61,6 +61,7 @@ body { margin:0; padding:0; }
  cursor:pointer;
 }
 
+/* SEARCH RESULTS */
 #searchResults {
  background:white;
  margin-top:5px;
@@ -95,7 +96,6 @@ body { margin:0; padding:0; }
 }
 
 /* SIDE PANEL */
-
 #sidePanel {
  position:absolute;
  top:0;
@@ -197,22 +197,16 @@ body { margin:0; padding:0; }
  object-fit:cover;
 }
 
-/* APP PREVIEWS */
+/* APP PREVIEW IMAGES */
 .appPreviewRow {
  display:flex;
  gap:10px;
  margin-top:14px;
 }
 
-.appPreview {
- width:100%;
+.appPreviewRow img {
+ width:48%;
  border-radius:12px;
- overflow:hidden;
-}
-
-.appPreview img {
- width:100%;
- display:block;
  object-fit:cover;
 }
 </style>
@@ -261,6 +255,7 @@ function init() {
 
  loadData();
  setupSearch();
+
  map.on("click", hideSidePanel);
 }
 
@@ -334,6 +329,80 @@ function normalizeUser(u) {
  };
 }
 
+function createIcon(u) {
+
+ const isRecommended = !!u.recommended;
+ const isChurchLeader = (u.churchPosition || "").toLowerCase() === "church leader";
+
+ let bg = "#4a6cf7";
+ if (isChurchLeader) bg = "#f59e0b";
+ if (isRecommended) bg = "#22c55e";
+
+ return L.divIcon({
+   className: "",
+   html: `
+     <div class="marker-inner" style="
+       width:30px;
+       height:30px;
+       border-radius:50%;
+       background:${bg};
+       display:flex;
+       align-items:center;
+       justify-content:center;
+       color:white;
+       font-size:14px;
+       border:2px solid white;
+       box-shadow:0 2px 6px rgba(0,0,0,0.3);
+     ">
+       ${isChurchLeader ? "🏛️" : "👤"}
+     </div>
+   `,
+   iconSize: [30, 30],
+   iconAnchor: [15, 15]
+ });
+}
+
+function render() {
+
+ map.eachLayer(layer => {
+   if (layer instanceof L.Marker) map.removeLayer(layer);
+ });
+
+ markers = [];
+
+ users.filter(u => !u.ghostMode).forEach(u => {
+
+   const marker = L.marker([u.latitude, u.longitude], {
+     icon: createIcon(u)
+   }).addTo(map);
+
+   marker.userData = u;
+
+   marker.on("click", () => {
+     selectMarker(marker);
+     showSidePanel(u);
+   });
+
+   markers.push(marker);
+ });
+}
+
+function selectMarker(marker) {
+
+ if (selectedMarker) {
+   const prev = selectedMarker.getElement()?.querySelector(".marker-inner");
+   if (prev) prev.classList.remove("pulse");
+ }
+
+ selectedMarker = marker;
+
+ const el = marker.getElement()?.querySelector(".marker-inner");
+ if (el) el.classList.add("pulse");
+
+ map.setView(marker.getLatLng(), map.getZoom());
+}
+
+/* SIDE PANEL */
 function showSidePanel(u) {
 
  const panel = document.getElementById("sidePanel");
@@ -341,7 +410,6 @@ function showSidePanel(u) {
  const socialHTML = (u.socialMediaLinks || []).map(s => {
 
    let img = "link.png";
-
    if (s.platform?.toLowerCase().includes("instagram")) img = "instagram.png";
    if (s.platform?.toLowerCase().includes("youtube")) img = "youtube.png";
    if (s.platform?.toLowerCase().includes("facebook")) img = "facebook.png";
@@ -365,6 +433,7 @@ function showSidePanel(u) {
    <div class="socialRow">${socialHTML}</div>
 
    <div class="sideButtons">
+
      <a class="sideBtn" href="mailto:${u.email || ''}">
        <span class="emailIcon">
          <svg viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2">
@@ -374,15 +443,81 @@ function showSidePanel(u) {
        </span>
        Send email
      </a>
+
+     <a class="sideBtn" href="https://apps.apple.com/se/app/discipler/id6756657404" target="_blank">
+       🍎 Download app on iOS
+     </a>
+
+     <a class="sideBtn" href="https://play.google.com/store/apps/details?id=com.theway.discipler44&hl=en" target="_blank">
+       🤖 Download app on Android
+     </a>
    </div>
 
    <div class="appPreviewRow">
-     <div class="appPreview"><img src="app_preview_1.png"/></div>
-     <div class="appPreview"><img src="app_preview_2.png"/></div>
+     <img src="app_preview_1.png" />
+     <img src="app_preview_2.png" />
    </div>
  `;
 
  panel.classList.add("active");
+}
+
+function hideSidePanel() {
+ document.getElementById("sidePanel").classList.remove("active");
+}
+
+function setupSearch() {
+
+ const input = document.getElementById("searchInput");
+ const clearBtn = document.getElementById("clearSearch");
+
+ input.addEventListener("input", () => {
+
+   const val = input.value.toLowerCase();
+
+   const results = users.filter(u =>
+     (u.name || "").toLowerCase().includes(val) ||
+     (u.username || "").toLowerCase().includes(val) ||
+     (u.church || "").toLowerCase().includes(val)
+   );
+
+   renderSearch(results);
+ });
+
+ clearBtn.onclick = () => {
+   input.value = "";
+   document.getElementById("searchResults").innerHTML = "";
+ };
+}
+
+function renderSearch(list) {
+
+ const box = document.getElementById("searchResults");
+ box.innerHTML = "";
+
+ list.slice(0, 20).forEach(u => {
+
+   const div = document.createElement("div");
+   div.className = "search-item";
+
+   div.innerHTML = `
+     <div class="search-icon">👤</div>
+     <div>
+       <div><b>${u.name || u.username}</b></div>
+       <div style="font-size:11px;color:gray;">${u.church || ""}</div>
+     </div>
+   `;
+
+   div.onclick = () => {
+     const m = markers.find(m => m.userData.username === u.username);
+     if (m) {
+       selectMarker(m);
+       showSidePanel(u);
+     }
+   };
+
+   box.appendChild(div);
+ });
 }
 </script>
 
