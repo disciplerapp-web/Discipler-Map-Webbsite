@@ -49,7 +49,7 @@ body { margin:0; padding:0; }
 #clearSearch {
  position:absolute;
  right:10px;
- top:10px; /* fixed position, no movement */
+ top:10px;
  width:16px;
  height:16px;
  border-radius:50%;
@@ -61,7 +61,6 @@ body { margin:0; padding:0; }
  cursor:pointer;
 }
 
-/* SEARCH RESULTS */
 #searchResults {
  background:white;
  margin-top:5px;
@@ -188,7 +187,7 @@ body { margin:0; padding:0; }
  height:20px;
 }
 
-/* SOCIAL ICONS (UPDATED) */
+/* SOCIAL ICONS */
 .socialRow {
  display:flex;
  gap:10px;
@@ -206,6 +205,25 @@ body { margin:0; padding:0; }
 .socialIcon img {
  width:100%;
  height:100%;
+ object-fit:cover;
+}
+
+/* APP PREVIEWS */
+.appPreviewRow {
+ display:flex;
+ gap:10px;
+ margin-top:14px;
+}
+
+.appPreview {
+ width:100%;
+ border-radius:12px;
+ overflow:hidden;
+}
+
+.appPreview img {
+ width:100%;
+ display:block;
  object-fit:cover;
 }
 </style>
@@ -246,8 +264,6 @@ init();
 
 function init() {
 
- log("🟢p INIT MAP START");
-
  map = L.map('map').setView([59.3293, 18.0686], 10);
 
  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -256,13 +272,10 @@ function init() {
 
  loadData();
  setupSearch();
-
  map.on("click", hideSidePanel);
 }
 
 async function loadData() {
-
- log("📡 FETCHING DATA");
 
  const [u, e] = await Promise.all([
    fetchUsers(),
@@ -273,7 +286,6 @@ async function loadData() {
  events = e;
 
  log("USERS:", users);
- log("EVENTS:", events);
 
  if (!hasRendered) {
    hasRendered = true;
@@ -283,18 +295,13 @@ async function loadData() {
 
 async function fetchUsers() {
 
- log("📡 CALLING /users");
-
  const res = await fetch(`${API_BASE}/users`);
  const json = await res.json();
-
- log("RAW USERS:", json);
 
  return (json || []).map(normalizeUser);
 }
 
 async function fetchEvents() {
- log("fetchEvents disabled");
  return [];
 }
 
@@ -359,7 +366,6 @@ function createIcon(u) {
        align-items:center;
        justify-content:center;
        color:white;
-       font-size:14px;
        border:2px solid white;
        box-shadow:0 2px 6px rgba(0,0,0,0.3);
      ">
@@ -372,8 +378,6 @@ function createIcon(u) {
 }
 
 function render() {
-
- log("RENDERING");
 
  map.eachLayer(layer => {
    if (layer instanceof L.Marker) map.removeLayer(layer);
@@ -390,23 +394,15 @@ function render() {
    marker.userData = u;
 
    marker.on("click", () => {
-     log("CLICK:", u);
      selectMarker(marker);
      showSidePanel(u);
    });
 
    markers.push(marker);
  });
-
- log("MARKERS:", markers.length);
 }
 
 function selectMarker(marker) {
-
- if (selectedMarker) {
-   const prev = selectedMarker.getElement()?.querySelector(".marker-inner");
-   if (prev) prev.classList.remove("pulse");
- }
 
  selectedMarker = marker;
 
@@ -416,6 +412,7 @@ function selectMarker(marker) {
  map.setView(marker.getLatLng(), map.getZoom());
 }
 
+/* SIDE PANEL */
 function showSidePanel(u) {
 
  const panel = document.getElementById("sidePanel");
@@ -425,6 +422,10 @@ function showSidePanel(u) {
    let img = "link.png";
    if (s.platform?.toLowerCase().includes("instagram")) img = "instagram.png";
    if (s.platform?.toLowerCase().includes("youtube")) img = "youtube.png";
+   if (s.platform?.toLowerCase().includes("facebook")) img = "facebook.png";
+   if (s.platform?.toLowerCase().includes("twitter")) img = "twitter.png";
+   if (s.platform?.toLowerCase().includes("tiktok")) img = "tiktok.png";
+   if (s.platform?.toLowerCase().includes("linkedin")) img = "linkedin.png";
 
    return `<a class="socialIcon" href="${s.url}" target="_blank">
      <img src="${img}" />
@@ -433,11 +434,14 @@ function showSidePanel(u) {
 
  panel.innerHTML = `
    <img class="sideProfileImg" src="${u.profileImage || 'https://via.placeholder.com/100'}"/>
+
    <div class="sideName">${u.name || ""}</div>
    <div class="sideUsername">@${u.username || ""}</div>
    <div class="sideChurch">${u.church || ""}</div>
    <div class="sideBio">${u.bio || ""}</div>
+
    <div class="socialRow">${socialHTML}</div>
+
    <div class="sideButtons">
      <a class="sideBtn" href="mailto:${u.email || ''}">
        <span class="emailIcon">
@@ -446,14 +450,13 @@ function showSidePanel(u) {
            <path d="M22 6l-10 7L2 6"/>
          </svg>
        </span>
-       Email
+       Send email
      </a>
-     <a class="sideBtn" href="https://apps.apple.com/se/app/discipler/id6756657404" target="_blank">
-       🍎 Download app on iOS
-     </a>
-     <a class="sideBtn" href="https://play.google.com/store/apps/details?id=com.theway.discipler44&hl=en" target="_blank">
-       🤖 Download app on Android
-     </a>
+   </div>
+
+   <div class="appPreviewRow">
+     <div class="appPreview"><img src="app_preview_1.png"/></div>
+     <div class="appPreview"><img src="app_preview_2.png"/></div>
    </div>
  `;
 
