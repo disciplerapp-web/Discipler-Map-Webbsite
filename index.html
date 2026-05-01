@@ -43,24 +43,25 @@ body { margin:0; padding:0; }
  border:1px solid #ddd;
  outline:none;
  box-sizing:border-box;
+ height:40px;
 }
 
 #clearSearch {
  position:absolute;
- right:8px;
- top:50%;
- transform:translateY(-50%);
- width:18px;
- height:18px;
+ right:10px;
+ top:10px; /* fixed position, no movement */
+ width:16px;
+ height:16px;
  border-radius:50%;
  background:#eee;
  display:flex;
  align-items:center;
  justify-content:center;
- font-size:12px;
+ font-size:11px;
  cursor:pointer;
 }
 
+/* SEARCH RESULTS */
 #searchResults {
  background:white;
  margin-top:5px;
@@ -187,7 +188,7 @@ body { margin:0; padding:0; }
  height:20px;
 }
 
-/* SOCIAL ICONS */
+/* SOCIAL ICONS (UPDATED) */
 .socialRow {
  display:flex;
  gap:10px;
@@ -198,12 +199,14 @@ body { margin:0; padding:0; }
  width:36px;
  height:36px;
  border-radius:50%;
- display:flex;
- align-items:center;
- justify-content:center;
- background:#eee;
- text-decoration:none;
- font-size:16px;
+ overflow:hidden;
+ display:block;
+}
+
+.socialIcon img {
+ width:100%;
+ height:100%;
+ object-fit:cover;
 }
 </style>
 </head>
@@ -243,7 +246,7 @@ init();
 
 function init() {
 
- log("🟢åå INIT MAP START");
+ log("🟢 INIT MAP START");
 
  map = L.map('map').setView([59.3293, 18.0686], 10);
 
@@ -418,12 +421,14 @@ function showSidePanel(u) {
  const panel = document.getElementById("sidePanel");
 
  const socialHTML = (u.socialMediaLinks || []).map(s => {
-   const icon =
-     s.platform?.toLowerCase().includes("instagram") ? "📸" :
-     s.platform?.toLowerCase().includes("youtube") ? "▶️" :
-     "🔗";
 
-   return `<a class="socialIcon" href="${s.url}" target="_blank">${icon}</a>`;
+   let img = "link.png";
+   if (s.platform?.toLowerCase().includes("instagram")) img = "instagram.png";
+   if (s.platform?.toLowerCase().includes("youtube")) img = "youtube.png";
+
+   return `<a class="socialIcon" href="${s.url}" target="_blank">
+     <img src="${img}" />
+   </a>`;
  }).join("");
 
  panel.innerHTML = `
