@@ -88,9 +88,7 @@ body { margin:0; padding:0; }
  100% { transform: scale(1); box-shadow:0 0 0 0 rgba(74,108,247,0); }
 }
 
-/* =========================
-   ✅ ADDED SIDE PANEL
-========================= */
+/* SIDE PANEL */
 
 #sidePanel {
  position:absolute;
@@ -167,10 +165,30 @@ body { margin:0; padding:0; }
  gap:8px;
 }
 
-.sideBtn svg {
- width:18px;
- height:18px;
+/* ✅ SOCIAL ICONS */
+.socialRow {
+ display:flex;
+ gap:10px;
+ margin-top:12px;
 }
+
+.socialIcon {
+ width:40px;
+ height:40px;
+ border-radius:50%;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ text-decoration:none;
+ color:white;
+ font-size:18px;
+}
+
+/* platform colors */
+.instagram { background:#E1306C; }
+.youtube { background:#FF0000; }
+.tiktok { background:#000; }
+.defaultSocial { background:#555; }
 
 </style>
 </head>
@@ -184,9 +202,7 @@ body { margin:0; padding:0; }
   <div id="searchResults"></div>
 </div>
 
-<!-- ✅ ADDED SIDE PANEL -->
 <div id="sidePanel"></div>
-
 <div class="log" id="log">Logs...</div>
 
 <script>
@@ -210,8 +226,6 @@ init();
 
 function init() {
 
- log("🟢ppgy INIT MAP START");
-
  map = L.map('map').setView([59.3293, 18.0686], 10);
 
  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -221,14 +235,10 @@ function init() {
  loadData();
  setupSearch();
 
- // ✅ ADDED: click outside hides panel
  map.on("click", hideSidePanel);
 }
 
 async function loadData() {
-
- log("📡 FETCHING DATA FROM BACKEND");
-
  const [u, e] = await Promise.all([
    fetchUsers(),
    fetchEvents()
@@ -237,9 +247,6 @@ async function loadData() {
  users = u;
  events = e;
 
- log("✅ USERS TOTAL: " + users.length);
- log("🔥 EVENTS TOTAL: " + events.length);
-
  if (!hasRendered) {
    hasRendered = true;
    render();
@@ -247,33 +254,13 @@ async function loadData() {
 }
 
 async function fetchUsers() {
-
- log("📡 fetchUsers() CALLING API");
-
  const res = await fetch(`${API_BASE}/users`);
  const json = await res.json();
 
- log("📦 RAW BACKEND RESPONSE USERS:", json);
-
- const mapped = (json || []).map((u, i) => {
-   const normalized = normalizeUser(u);
-
-   log("👤 NORMALIZED USER " + i, normalized);
-
-   if (!normalized.profileImage) {
-     log("⚠️ Missing profileImage for user: " + (normalized.username || "unknown"));
-   }
-
-   return normalized;
- });
-
- return mapped;
+ return (json || []).map(u => normalizeUser(u));
 }
 
-async function fetchEvents() {
- log("📡 fetchEvents() (disabled)");
- return [];
-}
+async function fetchEvents() { return []; }
 
 function normalizeUser(u) {
 
@@ -282,7 +269,17 @@ function normalizeUser(u) {
  const latRaw = loc?.latitude?.N ?? loc?.latitude;
  const lngRaw = loc?.longitude?.N ?? loc?.longitude;
  const imageKey = u.imageKey?.S || u.imageKey;
- 
+
+ const socialsRaw = u.socialMediaLinks?.L || u.socialMediaLinks || [];
+
+ const socials = socialsRaw.map(s => {
+   const obj = s.M || s;
+   return {
+     platform: obj.platform?.S || obj.platform,
+     url: obj.url?.S || obj.url
+   };
+ });
+
  return {
    ...u,
    name: u.name?.S || u.name,
@@ -291,49 +288,46 @@ function normalizeUser(u) {
    church: u.church?.S || u.church,
    churchPosition: u.churchPosition?.S || u.churchPosition,
    bio: u.bio?.S || u.bio,
+   socialMediaLinks: socials,
+
    profileImage: imageKey
      ? `https://discipler221e46f-prod.s3.eu-north-1.amazonaws.com/public/profilePics/${imageKey}/profile.jpg`
      : null,
 
    ghostMode: u.ghostMode?.BOOL === true,
-
    latitude: parseFloat(latRaw),
    longitude: parseFloat(lngRaw)
  };
 }
 
-function createIcon(u) {
+/* ✅ SOCIAL RENDER */
+function renderSocials(socials) {
 
- const isChurchLeader = (u.churchPosition || "").toLowerCase() === "church leader";
- const bg = isChurchLeader ? "#f59e0b" : "#4a6cf7";
+ if (!socials || socials.length === 0) return "";
 
- return L.divIcon({
-   className: "",
-   html: `
-     <div class="marker-inner" style="
-       width:30px;
-       height:30px;
-       border-radius:50%;
-       background:${bg};
-       display:flex;
-       align-items:center;
-       justify-content:center;
-       color:white;
-       font-size:14px;
-       border:2px solid white;
-       box-shadow:0 2px 6px rgba(0,0,0,0.3);
-     ">
-       ${isChurchLeader ? "🏛️" : "👤"}
-     </div>
-   `,
-   iconSize: [30, 30],
-   iconAnchor: [15, 15]
- });
+ return `
+   <div class="socialRow">
+     ${socials.map(s => {
+       const p = (s.platform || "").toLowerCase();
+
+       let cls = "defaultSocial";
+       let icon = "🔗";
+
+       if (p.includes("instagram")) { cls="instagram"; icon="📸"; }
+       if (p.includes("youtube")) { cls="youtube"; icon="▶"; }
+       if (p.includes("tiktok")) { cls="tiktok"; icon="♪"; }
+
+       return `
+         <a href="${s.url}" target="_blank" class="socialIcon ${cls}">
+           ${icon}
+         </a>
+       `;
+     }).join("")}
+   </div>
+ `;
 }
 
 function render() {
-
- log("🗺️ RENDERING MARKERS");
 
  map.eachLayer(layer => {
    if (layer instanceof L.Marker) map.removeLayer(layer);
@@ -341,54 +335,43 @@ function render() {
 
  markers = [];
 
- users.filter(u => !u.ghostMode).forEach((u, idx) => {
+ users.filter(u => !u.ghostMode).forEach(u => {
 
-   const lat = Number(u.latitude);
-   const lng = Number(u.longitude);
-
-   if (!lat || !lng) {
-     log("❌ INVALID COORDS for user", u);
-     return;
-   }
-
-   const marker = L.marker([lat, lng], {
+   const marker = L.marker([u.latitude, u.longitude], {
      icon: createIcon(u)
    }).addTo(map);
 
    marker.userData = u;
 
    marker.on("click", () => {
-     log("🖱️ MARKER CLICKED", u);
      selectMarker(marker);
-     showSidePanel(u); // ✅ ADDED
+     showSidePanel(u);
    });
 
    markers.push(marker);
  });
+}
 
- log("✅ RENDER COMPLETE - MARKERS: " + markers.length);
+function createIcon(u) {
+ const isChurchLeader = (u.churchPosition || "").toLowerCase() === "church leader";
+ return L.divIcon({
+   html:`<div class="marker-inner" style="width:30px;height:30px;border-radius:50%;background:${isChurchLeader?"#f59e0b":"#4a6cf7"};display:flex;align-items:center;justify-content:center;color:white;">${isChurchLeader?"🏛️":"👤"}</div>`
+ });
 }
 
 function selectMarker(marker) {
 
-  if (selectedMarker) {
-    const prev = selectedMarker.getElement()?.querySelector(".marker-inner");
-    if (prev) prev.classList.remove("pulse");
-  }
+ if (selectedMarker) {
+   selectedMarker.getElement()?.querySelector(".marker-inner")?.classList.remove("pulse");
+ }
 
-  selectedMarker = marker;
+ selectedMarker = marker;
+ marker.getElement()?.querySelector(".marker-inner")?.classList.add("pulse");
 
-  const el = marker.getElement()?.querySelector(".marker-inner");
-  if (el) el.classList.add("pulse");
-
-  map.setView(marker.getLatLng(), map.getZoom());
-  marker.openPopup();
+ map.setView(marker.getLatLng(), map.getZoom());
 }
 
-/* =========================
-   ✅ SIDE PANEL LOGIC
-========================= */
-
+/* ✅ SIDE PANEL UPDATED */
 function showSidePanel(u) {
 
  const panel = document.getElementById("sidePanel");
@@ -401,8 +384,9 @@ function showSidePanel(u) {
    <div class="sideChurch">${u.church || ""}</div>
    <div class="sideBio">${u.bio || ""}</div>
 
-   <div class="sideButtons">
+   ${renderSocials(u.socialMediaLinks)}
 
+   <div class="sideButtons">
      <a class="sideBtn" href="mailto:${u.email || ''}">
        ✉ <span>Email</span>
      </a>
@@ -410,7 +394,6 @@ function showSidePanel(u) {
      <a class="sideBtn" href="#">
        ⬇ Download App
      </a>
-
    </div>
  `;
 
@@ -421,7 +404,7 @@ function hideSidePanel() {
  document.getElementById("sidePanel").classList.remove("active");
 }
 
-/* SEARCH */
+/* SEARCH (unchanged) */
 function setupSearch() {
 
  const input = document.getElementById("searchInput");
@@ -462,7 +445,7 @@ function renderSearch(list) {
      const m = markers.find(m => m.userData.username === u.username);
      if (m) {
        selectMarker(m);
-       showSidePanel(u); // ✅ ADDED
+       showSidePanel(u);
      }
    };
 
