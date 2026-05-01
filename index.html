@@ -38,7 +38,7 @@ body { margin:0; padding:0; }
 
 #searchInput {
  width:100%;
- padding:10px 36px 10px 10px;
+ padding:10px 32px 10px 10px;
  border-radius:8px;
  border:1px solid #ddd;
  outline:none;
@@ -50,14 +50,14 @@ body { margin:0; padding:0; }
  right:8px;
  top:50%;
  transform:translateY(-50%);
- width:22px;
- height:22px;
+ width:18px;
+ height:18px;
  border-radius:50%;
  background:#eee;
  display:flex;
  align-items:center;
  justify-content:center;
- font-size:14px;
+ font-size:12px;
  cursor:pointer;
 }
 
@@ -182,8 +182,9 @@ body { margin:0; padding:0; }
  gap:8px;
 }
 
-.emailIcon {
- font-size:22px;
+.emailIcon svg {
+ width:20px;
+ height:20px;
 }
 
 /* SOCIAL ICONS */
@@ -242,7 +243,7 @@ init();
 
 function init() {
 
- log("🟢 INIT MAP START");
+ log("🟢åå INIT MAP START");
 
  map = L.map('map').setView([59.3293, 18.0686], 10);
 
@@ -434,13 +435,19 @@ function showSidePanel(u) {
    <div class="socialRow">${socialHTML}</div>
    <div class="sideButtons">
      <a class="sideBtn" href="mailto:${u.email || ''}">
-       <span class="emailIcon">✉</span> Email
+       <span class="emailIcon">
+         <svg viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2">
+           <path d="M4 4h16v16H4z"/>
+           <path d="M22 6l-10 7L2 6"/>
+         </svg>
+       </span>
+       Email
      </a>
      <a class="sideBtn" href="https://apps.apple.com/se/app/discipler/id6756657404" target="_blank">
-       🍎 Download on iOS
+       🍎 Download app on iOS
      </a>
      <a class="sideBtn" href="https://play.google.com/store/apps/details?id=com.theway.discipler44&hl=en" target="_blank">
-       🤖 Download on Android
+       🤖 Download app on Android
      </a>
    </div>
  `;
