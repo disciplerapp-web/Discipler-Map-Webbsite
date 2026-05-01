@@ -44,6 +44,14 @@ body { margin:0; padding:0; }
  outline:none;
 }
 
+#clearSearch {
+ position:absolute;
+ right:10px;
+ top:10px;
+ cursor:pointer;
+ font-weight:bold;
+}
+
 #searchResults {
  background:white;
  margin-top:5px;
@@ -165,12 +173,7 @@ body { margin:0; padding:0; }
  gap:8px;
 }
 
-.sideBtn svg {
- width:18px;
- height:18px;
-}
-
-/* ✅ SOCIAL ICONS */
+/* SOCIAL ICONS */
 .socialRow {
  display:flex;
  gap:10px;
@@ -188,7 +191,6 @@ body { margin:0; padding:0; }
  text-decoration:none;
  font-size:16px;
 }
-
 </style>
 </head>
 
@@ -198,12 +200,13 @@ body { margin:0; padding:0; }
 
 <div id="searchContainer">
   <input id="searchInput" placeholder="Search users..." />
+  <div id="clearSearch">✖</div>
   <div id="searchResults"></div>
 </div>
 
 <div id="sidePanel"></div>
 
-<div class="log" id="log">Logts...</div>
+<div class="log" id="log">Logs...</div>
 
 <script>
 const API_BASE = "https://zjt4sxvh0l.execute-api.eu-north-1.amazonaws.com";
@@ -225,6 +228,9 @@ function log(msg, data) {
 init();
 
 function init() {
+
+ log("🟢 INIT MAP START");
+
  map = L.map('map').setView([59.3293, 18.0686], 10);
 
  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -233,10 +239,14 @@ function init() {
 
  loadData();
  setupSearch();
+
  map.on("click", hideSidePanel);
 }
 
 async function loadData() {
+
+ log("📡 FETCHING DATA");
+
  const [u, e] = await Promise.all([
    fetchUsers(),
    fetchEvents()
@@ -245,6 +255,9 @@ async function loadData() {
  users = u;
  events = e;
 
+ log("USERS:", users);
+ log("EVENTS:", events);
+
  if (!hasRendered) {
    hasRendered = true;
    render();
@@ -252,17 +265,22 @@ async function loadData() {
 }
 
 async function fetchUsers() {
+
+ log("📡 CALLING /users");
+
  const res = await fetch(`${API_BASE}/users`);
  const json = await res.json();
+
+ log("RAW USERS:", json);
 
  return (json || []).map(normalizeUser);
 }
 
 async function fetchEvents() {
+ log("fetchEvents disabled");
  return [];
 }
 
-/* ✅ UPDATED NORMALIZATION */
 function normalizeUser(u) {
 
  const loc = u.location?.M || u.location;
@@ -271,7 +289,6 @@ function normalizeUser(u) {
  const lngRaw = loc?.longitude?.N ?? loc?.longitude;
  const imageKey = u.imageKey?.S || u.imageKey;
 
- // ✅ SOCIAL MEDIA PARSE
  const socialRaw = u.socialMediaLinks?.L || u.socialMediaLinks || [];
  const socialMediaLinks = socialRaw.map(item => {
    const val = item.M || item;
@@ -291,6 +308,8 @@ function normalizeUser(u) {
    bio: u.bio?.S || u.bio,
    socialMediaLinks,
 
+   recommended: u.recommended?.S || u.recommended,
+
    profileImage: imageKey
      ? `https://discipler221e46f-prod.s3.eu-north-1.amazonaws.com/public/profilePics/${imageKey}/profile.jpg`
      : null,
@@ -303,18 +322,42 @@ function normalizeUser(u) {
 }
 
 function createIcon(u) {
+
+ const isRecommended = !!u.recommended;
  const isChurchLeader = (u.churchPosition || "").toLowerCase() === "church leader";
- const bg = isChurchLeader ? "#f59e0b" : "#4a6cf7";
+
+ let bg = "#4a6cf7";
+ if (isChurchLeader) bg = "#f59e0b";
+ if (isRecommended) bg = "#22c55e"; // green override
 
  return L.divIcon({
    className: "",
-   html: `<div class="marker-inner" style="width:30px;height:30px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;color:white;">${isChurchLeader ? "🏛️" : "👤"}</div>`,
+   html: `
+     <div class="marker-inner" style="
+       width:30px;
+       height:30px;
+       border-radius:50%;
+       background:${bg};
+       display:flex;
+       align-items:center;
+       justify-content:center;
+       color:white;
+       font-size:14px;
+       border:2px solid white;
+       box-shadow:0 2px 6px rgba(0,0,0,0.3);
+     ">
+       ${isChurchLeader ? "🏛️" : "👤"}
+     </div>
+   `,
    iconSize: [30, 30],
    iconAnchor: [15, 15]
  });
 }
 
 function render() {
+
+ log("RENDERING");
+
  map.eachLayer(layer => {
    if (layer instanceof L.Marker) map.removeLayer(layer);
  });
@@ -330,15 +373,19 @@ function render() {
    marker.userData = u;
 
    marker.on("click", () => {
+     log("CLICK:", u);
      selectMarker(marker);
      showSidePanel(u);
    });
 
    markers.push(marker);
  });
+
+ log("MARKERS:", markers.length);
 }
 
 function selectMarker(marker) {
+
  if (selectedMarker) {
    const prev = selectedMarker.getElement()?.querySelector(".marker-inner");
    if (prev) prev.classList.remove("pulse");
@@ -352,7 +399,6 @@ function selectMarker(marker) {
  map.setView(marker.getLatLng(), map.getZoom());
 }
 
-/* ✅ UPDATED PANEL */
 function showSidePanel(u) {
 
  const panel = document.getElementById("sidePanel");
@@ -368,18 +414,13 @@ function showSidePanel(u) {
 
  panel.innerHTML = `
    <img class="sideProfileImg" src="${u.profileImage || 'https://via.placeholder.com/100'}"/>
-
    <div class="sideName">${u.name || ""}</div>
    <div class="sideUsername">@${u.username || ""}</div>
    <div class="sideChurch">${u.church || ""}</div>
    <div class="sideBio">${u.bio || ""}</div>
-
    <div class="socialRow">${socialHTML}</div>
-
    <div class="sideButtons">
-     <a class="sideBtn" href="mailto:${u.email || ''}">
-       ✉ <span>Email</span>
-     </a>
+     <a class="sideBtn" href="mailto:${u.email || ''}">✉ Email</a>
      <a class="sideBtn" href="#">⬇ Download App</a>
    </div>
  `;
@@ -392,7 +433,9 @@ function hideSidePanel() {
 }
 
 function setupSearch() {
+
  const input = document.getElementById("searchInput");
+ const clearBtn = document.getElementById("clearSearch");
 
  input.addEventListener("input", () => {
 
@@ -406,6 +449,11 @@ function setupSearch() {
 
    renderSearch(results);
  });
+
+ clearBtn.onclick = () => {
+   input.value = "";
+   document.getElementById("searchResults").innerHTML = "";
+ };
 }
 
 function renderSearch(list) {
