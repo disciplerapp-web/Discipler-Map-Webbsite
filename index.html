@@ -165,6 +165,11 @@ body { margin:0; padding:0; }
  gap:8px;
 }
 
+.sideBtn svg {
+ width:18px;
+ height:18px;
+}
+
 /* ✅ SOCIAL ICONS */
 .socialRow {
  display:flex;
@@ -173,22 +178,16 @@ body { margin:0; padding:0; }
 }
 
 .socialIcon {
- width:40px;
- height:40px;
+ width:36px;
+ height:36px;
  border-radius:50%;
  display:flex;
  align-items:center;
  justify-content:center;
+ background:#eee;
  text-decoration:none;
- color:white;
- font-size:18px;
+ font-size:16px;
 }
-
-/* platform colors */
-.instagram { background:#E1306C; }
-.youtube { background:#FF0000; }
-.tiktok { background:#000; }
-.defaultSocial { background:#555; }
 
 </style>
 </head>
@@ -203,6 +202,7 @@ body { margin:0; padding:0; }
 </div>
 
 <div id="sidePanel"></div>
+
 <div class="log" id="log">Logs...</div>
 
 <script>
@@ -225,7 +225,6 @@ function log(msg, data) {
 init();
 
 function init() {
-
  map = L.map('map').setView([59.3293, 18.0686], 10);
 
  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -234,7 +233,6 @@ function init() {
 
  loadData();
  setupSearch();
-
  map.on("click", hideSidePanel);
 }
 
@@ -257,11 +255,14 @@ async function fetchUsers() {
  const res = await fetch(`${API_BASE}/users`);
  const json = await res.json();
 
- return (json || []).map(u => normalizeUser(u));
+ return (json || []).map(normalizeUser);
 }
 
-async function fetchEvents() { return []; }
+async function fetchEvents() {
+ return [];
+}
 
+/* ✅ UPDATED NORMALIZATION */
 function normalizeUser(u) {
 
  const loc = u.location?.M || u.location;
@@ -270,13 +271,13 @@ function normalizeUser(u) {
  const lngRaw = loc?.longitude?.N ?? loc?.longitude;
  const imageKey = u.imageKey?.S || u.imageKey;
 
- const socialsRaw = u.socialMediaLinks?.L || u.socialMediaLinks || [];
-
- const socials = socialsRaw.map(s => {
-   const obj = s.M || s;
+ // ✅ SOCIAL MEDIA PARSE
+ const socialRaw = u.socialMediaLinks?.L || u.socialMediaLinks || [];
+ const socialMediaLinks = socialRaw.map(item => {
+   const val = item.M || item;
    return {
-     platform: obj.platform?.S || obj.platform,
-     url: obj.url?.S || obj.url
+     platform: val.platform?.S || val.platform,
+     url: val.url?.S || val.url
    };
  });
 
@@ -288,47 +289,32 @@ function normalizeUser(u) {
    church: u.church?.S || u.church,
    churchPosition: u.churchPosition?.S || u.churchPosition,
    bio: u.bio?.S || u.bio,
-   socialMediaLinks: socials,
+   socialMediaLinks,
 
    profileImage: imageKey
      ? `https://discipler221e46f-prod.s3.eu-north-1.amazonaws.com/public/profilePics/${imageKey}/profile.jpg`
      : null,
 
    ghostMode: u.ghostMode?.BOOL === true,
+
    latitude: parseFloat(latRaw),
    longitude: parseFloat(lngRaw)
  };
 }
 
-/* ✅ SOCIAL RENDER */
-function renderSocials(socials) {
+function createIcon(u) {
+ const isChurchLeader = (u.churchPosition || "").toLowerCase() === "church leader";
+ const bg = isChurchLeader ? "#f59e0b" : "#4a6cf7";
 
- if (!socials || socials.length === 0) return "";
-
- return `
-   <div class="socialRow">
-     ${socials.map(s => {
-       const p = (s.platform || "").toLowerCase();
-
-       let cls = "defaultSocial";
-       let icon = "🔗";
-
-       if (p.includes("instagram")) { cls="instagram"; icon="📸"; }
-       if (p.includes("youtube")) { cls="youtube"; icon="▶"; }
-       if (p.includes("tiktok")) { cls="tiktok"; icon="♪"; }
-
-       return `
-         <a href="${s.url}" target="_blank" class="socialIcon ${cls}">
-           ${icon}
-         </a>
-       `;
-     }).join("")}
-   </div>
- `;
+ return L.divIcon({
+   className: "",
+   html: `<div class="marker-inner" style="width:30px;height:30px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;color:white;">${isChurchLeader ? "🏛️" : "👤"}</div>`,
+   iconSize: [30, 30],
+   iconAnchor: [15, 15]
+ });
 }
 
 function render() {
-
  map.eachLayer(layer => {
    if (layer instanceof L.Marker) map.removeLayer(layer);
  });
@@ -352,29 +338,33 @@ function render() {
  });
 }
 
-function createIcon(u) {
- const isChurchLeader = (u.churchPosition || "").toLowerCase() === "church leader";
- return L.divIcon({
-   html:`<div class="marker-inner" style="width:30px;height:30px;border-radius:50%;background:${isChurchLeader?"#f59e0b":"#4a6cf7"};display:flex;align-items:center;justify-content:center;color:white;">${isChurchLeader?"🏛️":"👤"}</div>`
- });
-}
-
 function selectMarker(marker) {
-
  if (selectedMarker) {
-   selectedMarker.getElement()?.querySelector(".marker-inner")?.classList.remove("pulse");
+   const prev = selectedMarker.getElement()?.querySelector(".marker-inner");
+   if (prev) prev.classList.remove("pulse");
  }
 
  selectedMarker = marker;
- marker.getElement()?.querySelector(".marker-inner")?.classList.add("pulse");
+
+ const el = marker.getElement()?.querySelector(".marker-inner");
+ if (el) el.classList.add("pulse");
 
  map.setView(marker.getLatLng(), map.getZoom());
 }
 
-/* ✅ SIDE PANEL UPDATED */
+/* ✅ UPDATED PANEL */
 function showSidePanel(u) {
 
  const panel = document.getElementById("sidePanel");
+
+ const socialHTML = (u.socialMediaLinks || []).map(s => {
+   const icon =
+     s.platform?.toLowerCase().includes("instagram") ? "📸" :
+     s.platform?.toLowerCase().includes("youtube") ? "▶️" :
+     "🔗";
+
+   return `<a class="socialIcon" href="${s.url}" target="_blank">${icon}</a>`;
+ }).join("");
 
  panel.innerHTML = `
    <img class="sideProfileImg" src="${u.profileImage || 'https://via.placeholder.com/100'}"/>
@@ -384,16 +374,13 @@ function showSidePanel(u) {
    <div class="sideChurch">${u.church || ""}</div>
    <div class="sideBio">${u.bio || ""}</div>
 
-   ${renderSocials(u.socialMediaLinks)}
+   <div class="socialRow">${socialHTML}</div>
 
    <div class="sideButtons">
      <a class="sideBtn" href="mailto:${u.email || ''}">
        ✉ <span>Email</span>
      </a>
-
-     <a class="sideBtn" href="#">
-       ⬇ Download App
-     </a>
+     <a class="sideBtn" href="#">⬇ Download App</a>
    </div>
  `;
 
@@ -404,9 +391,7 @@ function hideSidePanel() {
  document.getElementById("sidePanel").classList.remove("active");
 }
 
-/* SEARCH (unchanged) */
 function setupSearch() {
-
  const input = document.getElementById("searchInput");
 
  input.addEventListener("input", () => {
