@@ -197,7 +197,7 @@ body { margin:0; padding:0; }
  object-fit:cover;
 }
 
-/* APP PREVIEW IMAGES */
+/* APP PREVIEW */
 .appPreviewRow {
  display:flex;
  gap:10px;
@@ -208,6 +208,14 @@ body { margin:0; padding:0; }
  width:48%;
  border-radius:12px;
  object-fit:cover;
+}
+
+/* NEW TEXT BLOCK */
+.downloadText {
+ font-size:12px;
+ color:#444;
+ margin-top:10px;
+ line-height:1.4;
 }
 </style>
 </head>
@@ -315,7 +323,6 @@ function normalizeUser(u) {
    churchPosition: u.churchPosition?.S || u.churchPosition,
    bio: u.bio?.S || u.bio,
    socialMediaLinks,
-
    recommended: u.recommended?.S || u.recommended,
 
    profileImage: imageKey
@@ -387,6 +394,7 @@ function render() {
  });
 }
 
+/* ✅ FIXED PULSING LOGIC */
 function selectMarker(marker) {
 
  if (selectedMarker) {
@@ -402,7 +410,6 @@ function selectMarker(marker) {
  map.setView(marker.getLatLng(), map.getZoom());
 }
 
-/* SIDE PANEL */
 function showSidePanel(u) {
 
  const panel = document.getElementById("sidePanel");
@@ -443,6 +450,10 @@ function showSidePanel(u) {
        </span>
        Send email
      </a>
+
+     <div class="downloadText">
+       Download the Disciple app on App Store to add your marker to the map and take part in the teaching and get discipled in healing the sick, casting out demons, preaching the gospel, and living a life by the Spirit.
+     </div>
 
      <a class="sideBtn" href="https://apps.apple.com/se/app/discipler/id6756657404" target="_blank">
        🍎 Download app on iOS
