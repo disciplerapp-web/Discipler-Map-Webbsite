@@ -239,6 +239,21 @@ body { margin:0; padding:0; }
 <div id="map"></div>
 
 <div id="debugBox"></div>
+ 
+window.onerror = function (message, source, lineno, colno, error) {
+  const box = document.getElementById("debugBox");
+
+  if (box) {
+    box.innerHTML += `
+      <div style="color:red;">
+        ❌ JS ERROR: ${message}<br>
+        Line: ${lineno}:${colno}
+      </div><hr>
+    `;
+  }
+
+  console.error("GLOBAL ERROR:", message, error);
+}; 
 
 <div id="searchContainer">
   <input id="searchInput" placeholder="Search users..." />
@@ -262,6 +277,8 @@ let selectedMarker = null;
 init();
 
 function init() {
+
+ logDebug("INIT STARTED");
 
  map = L.map('map').setView([59.3293, 18.0686], 10);
 
@@ -322,13 +339,29 @@ async function fetchEvents() {
    }
  `;
 
- const res = await fetch(API_BASE + "/graphql", {
-   method: "POST",
-   headers: { "Content-Type": "application/json" },
-   body: JSON.stringify({ query })
- });
+const res = await fetch(API_BASE + "/graphql", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ query })
+});
+
+logDebug("HTTP STATUS", res.status);
+
+if (!res.ok) {
+  logDebug("GRAPHQL HTTP ERROR", {
+    status: res.status,
+    statusText: res.statusText
+  });
+  return [];
+}
 
 const json = await res.json();
+
+logDebug("GraphQL raw response", json);
+
+if (json.errors) {
+  logDebug("GRAPHQL ERRORS", json.errors);
+}
 
 logDebug("GraphQL raw response", json);
 
@@ -352,6 +385,11 @@ function logDebug(msg, data) {
 
  const box = document.getElementById("debugBox");
 
+ if (!box) {
+   console.log("DEBUG BOX NOT READY:", msg, data);
+   return;
+ }
+
  const time = new Date().toLocaleTimeString();
 
  const line = document.createElement("div");
@@ -360,7 +398,7 @@ function logDebug(msg, data) {
  line.innerHTML = `
    <div style="color:#666;">[${time}]</div>
    <div>${msg}</div>
-   ${data ? `<pre style="white-space:pre-wrap;color:#333;">${JSON.stringify(data, null, 2)}</pre>` : ""}
+   ${data !== undefined ? `<pre style="white-space:pre-wrap;color:#333;">${JSON.stringify(data, null, 2)}</pre>` : ""}
    <hr>
  `;
 
