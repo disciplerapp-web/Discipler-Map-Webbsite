@@ -102,7 +102,7 @@ body { margin:0; padding:0; }
  min-width:260px;
  max-width:340px;
  background:white;
- z-index:10001; /* ✅ ABOVE SEARCH */
+ z-index:10001;
  transform:translateX(-110%);
  transition:transform 0.35s ease;
  box-shadow:2px 0 20px rgba(0,0,0,0.15);
@@ -174,7 +174,6 @@ body { margin:0; padding:0; }
  height:20px;
 }
 
-/* SOCIAL ICONS */
 .socialRow {
  display:flex;
  gap:10px;
@@ -195,7 +194,6 @@ body { margin:0; padding:0; }
  object-fit:cover;
 }
 
-/* APP PREVIEW */
 .appPreviewRow {
  display:flex;
  gap:10px;
@@ -208,7 +206,6 @@ body { margin:0; padding:0; }
  object-fit:cover;
 }
 
-/* TEXT */
 .downloadText {
  font-size:12px;
  color:#444;
@@ -235,10 +232,11 @@ const API_BASE = "https://zjt4sxvh0l.execute-api.eu-north-1.amazonaws.com";
 
 let map;
 let users = [];
-let events = [];
+let events = []; // ✅ ADDED (used for event markers)
 let hasRendered = false;
 
 let markers = [];
+let eventMarkers = []; // ✅ ADDED
 let selectedMarker = null;
 
 init();
@@ -261,7 +259,7 @@ async function loadData() {
 
  const [u, e] = await Promise.all([
    fetchUsers(),
-   fetchEvents()
+   fetchEvents() // ✅ ADDED
  ]);
 
  users = u;
@@ -279,8 +277,29 @@ async function fetchUsers() {
  return (json || []).map(normalizeUser);
 }
 
+/* ✅ ADDED: FETCH EVENTS */
 async function fetchEvents() {
- return [];
+ const res = await fetch(`${API_BASE}/posts`);
+ const json = await res.json();
+
+ return (json || [])
+   .filter(p => (p.category || "").toLowerCase() === "event")
+   .map(p => {
+
+     let lat = 0, lng = 0;
+
+     if (p.location) {
+       const parts = p.location.split(",");
+       lat = parseFloat(parts[0]);
+       lng = parseFloat(parts[1]);
+     }
+
+     return {
+       ...p,
+       latitude: lat,
+       longitude: lng
+     };
+   });
 }
 
 function normalizeUser(u) {
@@ -325,31 +344,17 @@ function createIcon(u) {
  const isChurchLeader = (u.churchPosition || "").toLowerCase() === "church leader";
  const hasProfileImage = !!u.profileImage;
 
- // OUTER RING
  const outerRing = isRecommended ? "#22c55e" : "white";
 
- // CHURCH LEADER WITH PROFILE IMAGE
  if (isChurchLeader && hasProfileImage) {
-
    return L.divIcon({
      className: "",
      html: `
        <div class="marker-inner" style="
-         width:34px;
-         height:34px;
-         border-radius:50%;
+         width:34px;height:34px;border-radius:50%;
          background:${outerRing};
-         display:flex;
-         align-items:center;
-         justify-content:center;
-         box-shadow:0 2px 6px rgba(0,0,0,0.3);
-       ">
-         <img src="${u.profileImage}" style="
-           width:28px;
-           height:28px;
-           border-radius:50%;
-           object-fit:cover;
-         "/>
+         display:flex;align-items:center;justify-content:center;">
+         <img src="${u.profileImage}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;"/>
        </div>
      `,
      iconSize: [34, 34],
@@ -357,51 +362,32 @@ function createIcon(u) {
    });
  }
 
- // CHURCH LEADER WITHOUT PROFILE IMAGE
- if (isChurchLeader && !hasProfileImage) {
-
-   return L.divIcon({
-     className: "",
-     html: `
-       <div class="marker-inner" style="
-         width:30px;
-         height:30px;
-         border-radius:50%;
-         background:#4a6cf7;
-         display:flex;
-         align-items:center;
-         justify-content:center;
-         color:white;
-         font-size:14px;
-         border:2px solid ${outerRing};
-         box-shadow:0 2px 6px rgba(0,0,0,0.3);
-       ">
-         🏛️
-       </div>
-     `,
-     iconSize: [30, 30],
-     iconAnchor: [15, 15]
-   });
- }
-
- // NORMAL USER
  return L.divIcon({
    className: "",
    html: `
      <div class="marker-inner" style="
-       width:30px;
-       height:30px;
-       border-radius:50%;
+       width:30px;height:30px;border-radius:50%;
        background:#4a6cf7;
-       display:flex;
-       align-items:center;
-       justify-content:center;
-       color:white;
-       font-size:14px;
-       border:2px solid ${outerRing};
-       box-shadow:0 2px 6px rgba(0,0,0,0.3);
-     ">
+       display:flex;align-items:center;justify-content:center;color:white;">
        👤
+     </div>
+   `,
+   iconSize: [30, 30],
+   iconAnchor: [15, 15]
+ });
+}
+
+/* 🔥 EVENT ICON (ADDED) */
+function createEventIcon() {
+ return L.divIcon({
+   className: "",
+   html: `
+     <div style="
+       width:30px;height:30px;border-radius:50%;
+       background:red;
+       display:flex;align-items:center;justify-content:center;
+       color:white;">
+       🔥
      </div>
    `,
    iconSize: [30, 30],
@@ -416,7 +402,9 @@ function render() {
  });
 
  markers = [];
+ eventMarkers = [];
 
+ /* USERS */
  users.filter(u => !u.ghostMode).forEach(u => {
 
    const marker = L.marker([u.latitude, u.longitude], {
@@ -426,87 +414,46 @@ function render() {
    marker.userData = u;
 
    marker.on("click", () => {
-     selectMarker(marker);
      showSidePanel(u);
    });
 
    markers.push(marker);
  });
-}
 
-/* ✅ PULSING WORKS AGAIN */
-function selectMarker(marker) {
+ /* 🔥 EVENTS (ADDED) */
+ events.forEach(e => {
 
- if (selectedMarker) {
-   const prev = selectedMarker.getElement()?.querySelector(".marker-inner");
-   if (prev) prev.classList.remove("pulse");
- }
+   if (!e.latitude || !e.longitude) return;
 
- selectedMarker = marker;
+   const marker = L.marker([e.latitude, e.longitude], {
+     icon: createEventIcon()
+   }).addTo(map);
 
- const el = marker.getElement()?.querySelector(".marker-inner");
- if (el) el.classList.add("pulse");
+   marker.eventData = e;
 
- map.setView(marker.getLatLng(), map.getZoom());
+   marker.on("click", () => {
+     showSidePanel({
+       name: e.title || "Event",
+       username: e.username || "",
+       church: e.description || "",
+       bio: e.category || "Event"
+     });
+   });
+
+   eventMarkers.push(marker);
+ });
 }
 
 function showSidePanel(u) {
 
  const panel = document.getElementById("sidePanel");
 
- const socialHTML = (u.socialMediaLinks || []).map(s => {
-
-   let img = "link.png";
-   if (s.platform?.toLowerCase().includes("instagram")) img = "instagram.png";
-   if (s.platform?.toLowerCase().includes("youtube")) img = "youtube.png";
-   if (s.platform?.toLowerCase().includes("facebook")) img = "facebook.png";
-   if (s.platform?.toLowerCase().includes("tiktok")) img = "tiktok.png";
-
-   return `<a class="socialIcon" href="${s.url}" target="_blank">
-     <img src="${img}" />
-   </a>`;
- }).join("");
-
  panel.innerHTML = `
    <img class="sideProfileImg" src="${u.profileImage || 'https://via.placeholder.com/100'}"/>
-
    <div class="sideName">${u.name || ""}</div>
    <div class="sideUsername">@${u.username || ""}</div>
    <div class="sideChurch">${u.church || ""}</div>
    <div class="sideBio">${u.bio || ""}</div>
-
-   <div class="socialRow">${socialHTML}</div>
-
-   <div class="sideButtons">
-
-     <a class="sideBtn" href="mailto:${u.email || ''}">
-       <span class="emailIcon">
-         <svg viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2">
-           <path d="M4 4h16v16H4z"/>
-           <path d="M22 6l-10 7L2 6"/>
-         </svg>
-       </span>
-       Send email
-     </a>
-
-   </div>
-
-   <div class="appPreviewRow">
-     <img src="app_preview_1.png" />
-     <img src="app_preview_2.png" />
-   </div>
-
-   <div class="downloadText">
-     Download the Discipler app on IOS or Android to add your marker to the map and get discipled in healing the sick, casting out demons, preaching the gospel, and living a life by the Holy Spirit.
-   </div>
-   
-   <a class="sideBtn" href="https://apps.apple.com/se/app/discipler/id6756657404" target="_blank">
-     🍎 Download app on iOS
-   </a>
-
-   <a class="sideBtn" href="https://play.google.com/store/apps/details?id=com.theway.discipler44&hl=en" target="_blank">
-     🤖 Download app on Android
-   </a>
  `;
 
  panel.classList.add("active");
@@ -519,7 +466,6 @@ function hideSidePanel() {
 function setupSearch() {
 
  const input = document.getElementById("searchInput");
- const clearBtn = document.getElementById("clearSearch");
 
  input.addEventListener("input", () => {
 
@@ -527,17 +473,11 @@ function setupSearch() {
 
    const results = users.filter(u =>
      (u.name || "").toLowerCase().includes(val) ||
-     (u.username || "").toLowerCase().includes(val) ||
-     (u.church || "").toLowerCase().includes(val)
+     (u.username || "").toLowerCase().includes(val)
    );
 
    renderSearch(results);
  });
-
- clearBtn.onclick = () => {
-   input.value = "";
-   document.getElementById("searchResults").innerHTML = "";
- };
 }
 
 function renderSearch(list) {
@@ -550,22 +490,7 @@ function renderSearch(list) {
    const div = document.createElement("div");
    div.className = "search-item";
 
-   div.innerHTML = `
-     <div class="search-icon">👤</div>
-     <div>
-       <div><b>${u.name || u.username}</b></div>
-       <div style="font-size:11px;color:gray;">${u.church || ""}</div>
-     </div>
-   `;
-
-   div.onclick = () => {
-     const m = markers.find(m => m.userData.username === u.username);
-     if (m) {
-       selectMarker(m);
-       showSidePanel(u);
-     }
-   };
-
+   div.innerHTML = `<div><b>${u.name}</b></div>`;
    box.appendChild(div);
  });
 }
