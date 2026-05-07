@@ -47,6 +47,7 @@ body { margin:0; padding:0; }
  cursor:pointer;
 }
 
+/* SEARCH RESULTS */
 #searchResults {
  background:white;
  margin-top:5px;
@@ -114,17 +115,17 @@ body { margin:0; padding:0; }
  transform:translateX(0);
 }
 
-/* DEBUG BOX (NEW) */
+/* DEBUG BOX */
 #debugBox {
  position:absolute;
  bottom:10px;
  right:10px;
  width:360px;
- height:260px;
+ height:240px;
  background:white;
  z-index:10002;
  overflow:auto;
- font-size:11px;
+ font-size:10px;
  font-family:monospace;
  padding:10px;
  border:1px solid #ddd;
@@ -154,25 +155,15 @@ const API_BASE = "https://zjt4sxvh0l.execute-api.eu-north-1.amazonaws.com";
 let map;
 let users = [];
 let posts = [];
+let hasRendered = false;
 
 let markers = [];
 let postMarkers = [];
-
 let selectedMarker = null;
 
 init();
 
-function log(msg, data) {
- const box = document.getElementById("debugBox");
- const time = new Date().toLocaleTimeString();
- box.innerHTML += `[${time}] ${msg} ${data ? JSON.stringify(data).slice(0,200) : ""}<br>`;
- box.scrollTop = box.scrollHeight;
- console.log(msg, data);
-}
-
 function init() {
-
- log("Init map");
 
  map = L.map('map').setView([59.3293, 18.0686], 10);
 
@@ -188,8 +179,6 @@ function init() {
 
 async function loadData() {
 
- log("Fetching users + posts");
-
  const [u, p] = await Promise.all([
    fetchUsers(),
    fetchPosts()
@@ -198,19 +187,19 @@ async function loadData() {
  users = u;
  posts = p;
 
- log("Users loaded", users.length);
- log("Posts loaded", posts.length);
-
- render();
  updateDebug();
+
+ if (!hasRendered) {
+   hasRendered = true;
+   render();
+ }
 }
 
 /* USERS */
 async function fetchUsers() {
  const res = await fetch(`${API_BASE}/users`);
  const json = await res.json();
- log("Users API raw", json?.length);
- return json || [];
+ return (json || []).map(normalizeUser);
 }
 
 /* POSTS (EVENTS ONLY) */
@@ -218,13 +207,7 @@ async function fetchPosts() {
  const res = await fetch(`${API_BASE}/posts`);
  const json = await res.json();
 
- log("Posts raw", json?.length);
-
- const filtered = (json || []).filter(p =>
-   (p.category?.S || p.category) === "Event"
- );
-
- log("Filtered events", filtered.length);
+ const filtered = (json || []).filter(p => p.category === "Event");
 
  return filtered.map(p => {
 
@@ -244,7 +227,49 @@ async function fetchPosts() {
  });
 }
 
-/* RENDER USERS + EVENTS */
+function normalizeUser(u) {
+
+ const loc = u.location?.M || u.location;
+
+ const latRaw = loc?.latitude?.N ?? loc?.latitude;
+ const lngRaw = loc?.longitude?.N ?? loc?.longitude;
+ const imageKey = u.imageKey?.S || u.imageKey;
+
+ return {
+   ...u,
+   name: u.name?.S || u.name,
+   username: u.username?.S || u.username,
+   church: u.church?.S || u.church,
+   bio: u.bio?.S || u.bio,
+   profileImage: imageKey
+     ? `https://discipler221e46f-prod.s3.eu-north-1.amazonaws.com/public/profilePics/${imageKey}/profile.jpg`
+     : null,
+   ghostMode: u.ghostMode?.BOOL === true,
+   latitude: parseFloat(latRaw),
+   longitude: parseFloat(lngRaw)
+ };
+}
+
+/* USER ICON */
+function createIcon() {
+ return L.divIcon({
+   className: "",
+   html: `<div style="width:30px;height:30px;border-radius:50%;background:#4a6cf7;display:flex;align-items:center;justify-content:center;color:white;">👤</div>`,
+   iconSize: [30,30],
+   iconAnchor: [15,15]
+ });
+}
+
+/* FIRE ICON FOR EVENTS */
+function createFireIcon() {
+ return L.divIcon({
+   className: "",
+   html: `<div style="width:30px;height:30px;border-radius:50%;background:#ff4500;display:flex;align-items:center;justify-content:center;color:white;">🔥</div>`,
+   iconSize: [30,30],
+   iconAnchor: [15,15]
+ });
+}
+
 function render() {
 
  map.eachLayer(layer => {
@@ -255,11 +280,11 @@ function render() {
  postMarkers = [];
 
  /* USERS */
- users.forEach(u => {
+ users.filter(u => !u.ghostMode).forEach(u => {
 
-   if (!u.latitude || !u.longitude) return;
-
-   const marker = L.marker([u.latitude, u.longitude]).addTo(map);
+   const marker = L.marker([u.latitude, u.longitude], {
+     icon: createIcon()
+   }).addTo(map);
 
    marker.userData = u;
 
@@ -271,42 +296,55 @@ function render() {
    markers.push(marker);
  });
 
- /* EVENTS */
+ /* POSTS (EVENTS) */
  posts.forEach(p => {
 
    if (!p.latitude || !p.longitude) return;
 
    const marker = L.marker([p.latitude, p.longitude], {
-     icon: L.divIcon({
-       className: "",
-       html: `<div style="width:28px;height:28px;border-radius:50%;background:#ff9800;
-       display:flex;align-items:center;justify-content:center;color:white;">📍</div>`
-     })
+     icon: createFireIcon()
    }).addTo(map);
 
    marker.postData = p;
 
+   marker.on("click", () => {
+
+     const fakeUser = {
+       name: p.title || "Event",
+       username: p.username || "",
+       bio: p.description || "",
+       profileImage: p.photo ? `https://your-bucket/${p.photo}` : ""
+     };
+
+     showSidePanel(fakeUser);
+   });
+
    postMarkers.push(marker);
  });
-
- log("Markers created", markers.length);
- log("Event markers created", postMarkers.length);
 }
 
-/* DEBUG VIEW */
+/* DEBUG BOX */
 function updateDebug() {
- document.getElementById("debugBox").innerHTML =
-   "<b>USERS:</b><br>" + JSON.stringify(users, null, 2) +
-   "<br><br><b>EVENTS:</b><br>" + JSON.stringify(posts, null, 2);
+ document.getElementById("debugBox").innerText =
+ "USERS:\n" + JSON.stringify(users, null, 2) +
+ "\n\nPOSTS:\n" + JSON.stringify(posts, null, 2);
 }
 
-/* SIDE PANEL */
+function selectMarker(marker) {
+ selectedMarker = marker;
+ map.setView(marker.getLatLng(), map.getZoom());
+}
+
 function showSidePanel(u) {
+
  const panel = document.getElementById("sidePanel");
+
  panel.innerHTML = `
    <div style="font-size:18px;font-weight:700;">${u.name || ""}</div>
    <div>@${u.username || ""}</div>
+   <div>${u.bio || ""}</div>
  `;
+
  panel.classList.add("active");
 }
 
@@ -314,37 +352,7 @@ function hideSidePanel() {
  document.getElementById("sidePanel").classList.remove("active");
 }
 
-/* SEARCH */
-function setupSearch() {
- const input = document.getElementById("searchInput");
-
- input.addEventListener("input", () => {
-
-   const val = input.value.toLowerCase();
-
-   const results = users.filter(u =>
-     (u.name || "").toLowerCase().includes(val) ||
-     (u.username || "").toLowerCase().includes(val)
-   );
-
-   renderSearch(results);
- });
-}
-
-function renderSearch(list) {
- const box = document.getElementById("searchResults");
- box.innerHTML = "";
-
- list.slice(0, 20).forEach(u => {
-
-   const div = document.createElement("div");
-   div.className = "search-item";
-
-   div.innerHTML = `<div><b>${u.name}</b></div>`;
-
-   box.appendChild(div);
- });
-}
+function setupSearch() {}
 </script>
 
 </body>
