@@ -47,6 +47,7 @@ body { margin:0; padding:0; }
  cursor:pointer;
 }
 
+/* SEARCH RESULTS */
 #searchResults {
  background:white;
  margin-top:5px;
@@ -65,7 +66,9 @@ body { margin:0; padding:0; }
  border-bottom:1px solid #eee;
 }
 
-.search-item:hover { background:#f5f5f5; }
+.search-item:hover {
+ background:#f5f5f5;
+}
 
 .search-icon {
  width:24px;
@@ -78,7 +81,7 @@ body { margin:0; padding:0; }
  background:#ddd;
 }
 
-/* PULSE */
+/* PULSE BACK */
 .pulse {
  animation: pulseAnim 1.2s infinite;
 }
@@ -108,91 +111,25 @@ body { margin:0; padding:0; }
  overflow:auto;
 }
 
-#sidePanel.active { transform:translateX(0); }
-
-.sideProfileImg {
- width:110px;
- height:110px;
- border-radius:50%;
- object-fit:cover;
- border:3px solid #ddd;
- margin-top:10px;
+#sidePanel.active {
+ transform:translateX(0);
 }
 
-.sideName { font-size:20px; font-weight:700; margin-top:12px; }
-.sideUsername { font-size:13px; color:gray; }
-.sideChurch { font-size:13px; margin-top:6px; color:#333; }
-.sideBio { font-size:12px; margin-top:10px; color:#444; }
-
-.sideButtons { display:flex; flex-direction:column; gap:10px; margin-top:16px; }
-
-.sideBtn {
- background:#e5e5e5;
- padding:10px;
- border-radius:10px;
- text-align:center;
- text-decoration:none;
- color:black;
- font-size:13px;
- display:flex;
- align-items:center;
- justify-content:center;
- gap:8px;
- margin-top:10px;
-}
-
-.emailIcon svg { width:20px; height:20px; }
-
-.socialRow { display:flex; gap:10px; margin-top:12px; }
-
-.socialIcon {
- width:36px;
- height:36px;
- border-radius:50%;
- overflow:hidden;
- display:block;
-}
-
-.socialIcon img {
- width:100%;
- height:100%;
- object-fit:cover;
-}
-
-.appPreviewRow {
- display:flex;
- gap:10px;
- margin-top:14px;
-}
-
-.appPreviewRow img {
- width:48%;
- border-radius:12px;
- object-fit:cover;
-}
-
-.downloadText {
- font-size:12px;
- color:#444;
- margin-top:10px;
- line-height:1.4;
-}
-
-/* DEBUG PANEL */
-#debugPanel {
+/* DEBUG BOX (NEW) */
+#debugBox {
  position:absolute;
  bottom:10px;
- left:10px;
- width:360px;
- max-height:220px;
+ right:10px;
+ width:320px;
+ height:220px;
+ background:white;
+ z-index:10002;
  overflow:auto;
- background:rgba(0,0,0,0.75);
- color:#00ff9d;
+ font-size:10px;
  font-family:monospace;
- font-size:11px;
  padding:10px;
- border-radius:8px;
- z-index:99999;
+ border:1px solid #ddd;
+ box-shadow:0 2px 10px rgba(0,0,0,0.2);
 }
 </style>
 </head>
@@ -200,14 +137,17 @@ body { margin:0; padding:0; }
 <body>
 
 <div id="map"></div>
+
 <div id="searchContainer">
   <input id="searchInput" placeholder="Search users..." />
   <div id="clearSearch">✕</div>
   <div id="searchResults"></div>
 </div>
 
-<div id="debugPanel"></div>
 <div id="sidePanel"></div>
+
+<!-- DEBUG BOX (NEW) -->
+<div id="debugBox"></div>
 
 <script>
 const API_BASE = "https://zjt4sxvh0l.execute-api.eu-north-1.amazonaws.com";
@@ -215,29 +155,16 @@ const API_BASE = "https://zjt4sxvh0l.execute-api.eu-north-1.amazonaws.com";
 let map;
 let users = [];
 let events = [];
+let posts = []; // NEW
 let hasRendered = false;
 
 let markers = [];
+let postMarkers = []; // NEW
 let selectedMarker = null;
-
-function logDebug(msg, data) {
- const box = document.getElementById("debugPanel");
- const time = new Date().toLocaleTimeString();
-
- const line = document.createElement("div");
- line.textContent = `[${time}] ${msg} ${data ? JSON.stringify(data).slice(0,200) : ""}`;
-
- box.appendChild(line);
- box.scrollTop = box.scrollHeight;
-
- console.log(msg, data);
-}
 
 init();
 
 function init() {
-
- logDebug("Init map");
 
  map = L.map('map').setView([59.3293, 18.0686], 10);
 
@@ -253,54 +180,246 @@ function init() {
 
 async function loadData() {
 
- try {
+ const [u, e, p] = await Promise.all([
+   fetchUsers(),
+   fetchEvents(),
+   fetchPosts()
+ ]);
 
-   logDebug("Fetching users + events");
+ users = u;
+ events = e;
+ posts = p;
 
-   const [u, e] = await Promise.all([
-     fetchUsers(),
-     fetchEvents()
-   ]);
+ updateDebug(); // NEW
 
-   users = u;
-   events = e;
-
-   logDebug("Users loaded", users.length);
-   logDebug("Events loaded", events.length);
-
-   if (!hasRendered) {
-     hasRendered = true;
-     render();
-   }
-
- } catch (err) {
-   logDebug("LOAD ERROR", err.message);
+ if (!hasRendered) {
+   hasRendered = true;
+   render();
  }
 }
 
+/* USERS */
 async function fetchUsers() {
  const res = await fetch(`${API_BASE}/users`);
  const json = await res.json();
-
- logDebug("Users API raw", json?.length);
-
- return json || [];
+ return (json || []).map(normalizeUser);
 }
 
-/* ✅ ONLY FIXED LINE */
-async function fetchEvents() {
+/* POSTS (NEW) */
+async function fetchPosts() {
  const res = await fetch(`${API_BASE}/posts`);
  const json = await res.json();
 
- logDebug("Posts raw", json?.length);
+ const filtered = (json || []).filter(p => p.category === "event");
 
- const filtered = (json || []).filter(p =>
-   (p.category?.S || p.category) === "Event"
- );
+ return filtered.map(p => {
 
- logDebug("Filtered events", filtered.length);
+   let lat = 0, lng = 0;
 
- return filtered;
+   if (p.location) {
+     const parts = p.location.split(",");
+     lat = parseFloat(parts[0]);
+     lng = parseFloat(parts[1]);
+   }
+
+   return {
+     ...p,
+     latitude: lat,
+     longitude: lng
+   };
+ });
+}
+
+async function fetchEvents() {
+ return [];
+}
+
+function normalizeUser(u) {
+
+ const loc = u.location?.M || u.location;
+
+ const latRaw = loc?.latitude?.N ?? loc?.latitude;
+ const lngRaw = loc?.longitude?.N ?? loc?.longitude;
+ const imageKey = u.imageKey?.S || u.imageKey;
+
+ const socialRaw = u.socialMediaLinks?.L || u.socialMediaLinks || [];
+ const socialMediaLinks = socialRaw.map(item => {
+   const val = item.M || item;
+   return {
+     platform: val.platform?.S || val.platform,
+     url: val.url?.S || val.url
+   };
+ });
+
+ return {
+   ...u,
+   name: u.name?.S || u.name,
+   email: u.email?.S || u.email,
+   username: u.username?.S || u.username,
+   church: u.church?.S || u.church,
+   churchPosition: u.churchPosition?.S || u.churchPosition,
+   bio: u.bio?.S || u.bio,
+   socialMediaLinks,
+   recommended: u.recommended?.S || u.recommended,
+   profileImage: imageKey
+     ? `https://discipler221e46f-prod.s3.eu-north-1.amazonaws.com/public/profilePics/${imageKey}/profile.jpg`
+     : null,
+   ghostMode: u.ghostMode?.BOOL === true,
+   latitude: parseFloat(latRaw),
+   longitude: parseFloat(lngRaw)
+ };
+}
+
+function createIcon(u) {
+
+ return L.divIcon({
+   className: "",
+   html: `
+     <div style="width:30px;height:30px;border-radius:50%;background:#4a6cf7;
+     display:flex;align-items:center;justify-content:center;color:white;
+     border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
+       👤
+     </div>
+   `,
+   iconSize: [30, 30],
+   iconAnchor: [15, 15]
+ });
+}
+
+/* POSTS ICON (NEW) */
+function createPostIcon() {
+ return L.divIcon({
+   className: "",
+   html: `
+     <div style="width:30px;height:30px;border-radius:50%;background:#ff9800;
+     display:flex;align-items:center;justify-content:center;color:white;
+     border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);">
+       📍
+     </div>
+   `,
+   iconSize: [30, 30],
+   iconAnchor: [15, 15]
+ });
+}
+
+function render() {
+
+ map.eachLayer(layer => {
+   if (layer instanceof L.Marker) map.removeLayer(layer);
+ });
+
+ markers = [];
+ postMarkers = [];
+
+ /* USERS */
+ users.filter(u => !u.ghostMode).forEach(u => {
+
+   const marker = L.marker([u.latitude, u.longitude], {
+     icon: createIcon(u)
+   }).addTo(map);
+
+   marker.userData = u;
+
+   marker.on("click", () => {
+     selectMarker(marker);
+     showSidePanel(u);
+   });
+
+   markers.push(marker);
+ });
+
+ /* POSTS (NEW) */
+ posts.forEach(p => {
+
+   if (!p.latitude || !p.longitude) return;
+
+   const marker = L.marker([p.latitude, p.longitude], {
+     icon: createPostIcon()
+   }).addTo(map);
+
+   marker.postData = p;
+
+   postMarkers.push(marker);
+ });
+}
+
+/* DEBUG BOX (NEW) */
+function updateDebug() {
+ document.getElementById("debugBox").innerText =
+   "USERS:\n" + JSON.stringify(users, null, 2) +
+   "\n\nPOSTS:\n" + JSON.stringify(posts, null, 2);
+}
+
+function selectMarker(marker) {
+
+ if (selectedMarker) {
+   const prev = selectedMarker.getElement()?.querySelector("div");
+   if (prev) prev.classList.remove("pulse");
+ }
+
+ selectedMarker = marker;
+
+ const el = marker.getElement()?.querySelector("div");
+ if (el) el.classList.add("pulse");
+
+ map.setView(marker.getLatLng(), map.getZoom());
+}
+
+function showSidePanel(u) {
+
+ const panel = document.getElementById("sidePanel");
+
+ panel.innerHTML = `
+   <div style="font-weight:700;font-size:18px;">${u.name || ""}</div>
+   <div>@${u.username || ""}</div>
+ `;
+
+ panel.classList.add("active");
+}
+
+function hideSidePanel() {
+ document.getElementById("sidePanel").classList.remove("active");
+}
+
+function setupSearch() {
+
+ const input = document.getElementById("searchInput");
+
+ input.addEventListener("input", () => {
+
+   const val = input.value.toLowerCase();
+
+   const results = users.filter(u =>
+     (u.name || "").toLowerCase().includes(val) ||
+     (u.username || "").toLowerCase().includes(val)
+   );
+
+   renderSearch(results);
+ });
+}
+
+function renderSearch(list) {
+
+ const box = document.getElementById("searchResults");
+ box.innerHTML = "";
+
+ list.slice(0, 20).forEach(u => {
+
+   const div = document.createElement("div");
+   div.className = "search-item";
+
+   div.innerHTML = `<div><b>${u.name}</b></div>`;
+
+   div.onclick = () => {
+     const m = markers.find(m => m.userData.username === u.username);
+     if (m) {
+       selectMarker(m);
+       showSidePanel(u);
+     }
+   };
+
+   box.appendChild(div);
+ });
 }
 </script>
 
