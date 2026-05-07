@@ -483,7 +483,21 @@ function render() {
 
  markers = [];
 
-users.filter(u => !u.ghostMode).forEach(u => {
+users
+  .filter(u =>
+    !u.ghostMode &&
+    u.latitude &&
+    u.longitude &&
+    !isNaN(u.latitude) &&
+    !isNaN(u.longitude) &&
+
+    // HIDE USERS WITH 0,0 COORDINATES
+    !(
+      u.latitude === 0 &&
+      u.longitude === 0
+    )
+  )
+  .forEach(u => {
 
   // Create marker first with default logic
   const marker = L.marker([u.latitude, u.longitude], {
