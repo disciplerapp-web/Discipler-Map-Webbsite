@@ -102,7 +102,7 @@ body { margin:0; padding:0; }
  min-width:260px;
  max-width:340px;
  background:white;
- z-index:10001;
+ z-index:10001; /* ✅ ABOVE SEARCH */
  transform:translateX(-110%);
  transition:transform 0.35s ease;
  box-shadow:2px 0 20px rgba(0,0,0,0.15);
@@ -236,10 +236,10 @@ const API_BASE = "https://zjt4sxvh0l.execute-api.eu-north-1.amazonaws.com";
 let map;
 let users = [];
 let events = [];
+let posts = [];
 let hasRendered = false;
 
 let markers = [];
-let eventMarkers = []; // ✅ ADDED
 let selectedMarker = null;
 
 init();
@@ -260,14 +260,15 @@ function init() {
 
 async function loadData() {
 
- const [u, e] = await Promise.all([
+ const [u, e, p] = await Promise.all([
    fetchUsers(),
    fetchEvents(),
-   fetchPosts() // ✅ ADDED
+   fetchPosts() // 🔥 ADDED ONLY
  ]);
 
  users = u;
  events = e;
+ posts = p; // 🔥 ADDED ONLY
 
  if (!hasRendered) {
    hasRendered = true;
@@ -285,19 +286,21 @@ async function fetchEvents() {
  return [];
 }
 
-/* ✅ ADDED: POSTS FETCH */
+// 🔥 ADDED
 async function fetchPosts() {
  const res = await fetch(`${API_BASE}/posts`);
  const json = await res.json();
 
  return (json || [])
-   .filter(p => (p.category?.S || p.category || "").toLowerCase() === "event")
+   .filter(p =>
+     (p.category?.S || p.category || "").toLowerCase() === "event"
+   )
    .map(p => {
 
      let loc = p.location?.S || p.location || "";
      let lat = 0, lng = 0;
 
-     if (typeof loc === "string" && loc.includes(",")) {
+     if (loc.includes(",")) {
        const parts = loc.split(",");
        lat = parseFloat(parts[0]);
        lng = parseFloat(parts[1]);
@@ -310,10 +313,7 @@ async function fetchPosts() {
      };
    });
 }
-
-/* ALL YOUR EXISTING CODE BELOW (UNCHANGED) */
-/* ------------------------------------------------ */
-
+ 
 function normalizeUser(u) {
 
  const loc = u.location?.M || u.location;
@@ -356,46 +356,113 @@ function createIcon(u) {
  const isChurchLeader = (u.churchPosition || "").toLowerCase() === "church leader";
  const hasProfileImage = !!u.profileImage;
 
+ // OUTER RING
  const outerRing = isRecommended ? "#22c55e" : "white";
 
+ // CHURCH LEADER WITH PROFILE IMAGE
  if (isChurchLeader && hasProfileImage) {
+
    return L.divIcon({
      className: "",
      html: `
        <div class="marker-inner" style="
-         width:34px;height:34px;border-radius:50%;
+         width:34px;
+         height:34px;
+         border-radius:50%;
          background:${outerRing};
-         display:flex;align-items:center;justify-content:center;
+         display:flex;
+         align-items:center;
+         justify-content:center;
          box-shadow:0 2px 6px rgba(0,0,0,0.3);
        ">
-         <img src="${u.profileImage}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;" />
+         <img src="${u.profileImage}" style="
+           width:28px;
+           height:28px;
+           border-radius:50%;
+           object-fit:cover;
+         "/>
        </div>
      `,
-     iconSize: [34,34],
-     iconAnchor: [17,17]
+     iconSize: [34, 34],
+     iconAnchor: [17, 17]
    });
  }
 
+ // CHURCH LEADER WITHOUT PROFILE IMAGE
+ if (isChurchLeader && !hasProfileImage) {
+
+   return L.divIcon({
+     className: "",
+     html: `
+       <div class="marker-inner" style="
+         width:30px;
+         height:30px;
+         border-radius:50%;
+         background:#4a6cf7;
+         display:flex;
+         align-items:center;
+         justify-content:center;
+         color:white;
+         font-size:14px;
+         border:2px solid ${outerRing};
+         box-shadow:0 2px 6px rgba(0,0,0,0.3);
+       ">
+         🏛️
+       </div>
+     `,
+     iconSize: [30, 30],
+     iconAnchor: [15, 15]
+   });
+ }
+
+ // NORMAL USER
  return L.divIcon({
    className: "",
-   html: `<div style="width:30px;height:30px;border-radius:50%;background:#4a6cf7;
-   display:flex;align-items:center;justify-content:center;color:white;">👤</div>`,
-   iconSize:[30,30],
-   iconAnchor:[15,15]
+   html: `
+     <div class="marker-inner" style="
+       width:30px;
+       height:30px;
+       border-radius:50%;
+       background:#4a6cf7;
+       display:flex;
+       align-items:center;
+       justify-content:center;
+       color:white;
+       font-size:14px;
+       border:2px solid ${outerRing};
+       box-shadow:0 2px 6px rgba(0,0,0,0.3);
+     ">
+       👤
+     </div>
+   `,
+   iconSize: [30, 30],
+   iconAnchor: [15, 15]
  });
 }
-
-/* ✅ ADDED EVENT ICON */
+// 🔥 ADDED
 function createEventIcon() {
  return L.divIcon({
    className: "",
-   html: `<div style="width:30px;height:30px;border-radius:50%;background:red;
-   display:flex;align-items:center;justify-content:center;color:white;">🔥</div>`,
-   iconSize:[30,30],
-   iconAnchor:[15,15]
+   html: `
+     <div style="
+       width:30px;
+       height:30px;
+       border-radius:50%;
+       background:red;
+       display:flex;
+       align-items:center;
+       justify-content:center;
+       color:white;
+       font-size:14px;
+     ">
+       🔥
+     </div>
+   `,
+   iconSize: [30, 30],
+   iconAnchor: [15, 15]
  });
 }
-
+ 
 function render() {
 
  map.eachLayer(layer => {
@@ -403,7 +470,6 @@ function render() {
  });
 
  markers = [];
- eventMarkers = []; // ✅ ADDED
 
  users.filter(u => !u.ghostMode).forEach(u => {
 
@@ -421,21 +487,21 @@ function render() {
    markers.push(marker);
  });
 
- /* ✅ ADDED EVENT MARKERS */
- (events || []).forEach(e => {
+ // 🔥 ADDED: POSTS / EVENTS ON MAP
+ posts.forEach(p => {
 
-   if (!e.latitude || !e.longitude) return;
+   if (!p.latitude || !p.longitude) return;
 
-   const marker = L.marker([e.latitude, e.longitude], {
+   const marker = L.marker([p.latitude, p.longitude], {
      icon: createEventIcon()
    }).addTo(map);
 
    marker.userData = {
-     name: e.title || "Event",
+     name: p.title || "Event",
      username: "event",
-     bio: e.description || "",
+     bio: p.description || "",
      email: "",
-     profileImage: e.photo || ""
+     profileImage: p.photo || ""
    };
 
    marker.on("click", () => {
@@ -443,13 +509,13 @@ function render() {
      showSidePanel(marker.userData);
    });
 
-   eventMarkers.push(marker);
+   markers.push(marker);
  });
 }
 
-/* EVERYTHING ELSE UNCHANGED */
-
+/* ✅ PULSING WORKS AGAIN */
 function selectMarker(marker) {
+
  if (selectedMarker) {
    const prev = selectedMarker.getElement()?.querySelector(".marker-inner");
    if (prev) prev.classList.remove("pulse");
@@ -489,6 +555,37 @@ function showSidePanel(u) {
    <div class="sideBio">${u.bio || ""}</div>
 
    <div class="socialRow">${socialHTML}</div>
+
+   <div class="sideButtons">
+
+     <a class="sideBtn" href="mailto:${u.email || ''}">
+       <span class="emailIcon">
+         <svg viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2">
+           <path d="M4 4h16v16H4z"/>
+           <path d="M22 6l-10 7L2 6"/>
+         </svg>
+       </span>
+       Send email
+     </a>
+
+   </div>
+
+   <div class="appPreviewRow">
+     <img src="app_preview_1.png" />
+     <img src="app_preview_2.png" />
+   </div>
+
+   <div class="downloadText">
+     Download the Discipler app on IOS or Android to add your marker to the map and get discipled in healing the sick, casting out demons, preaching the gospel, and living a life by the Holy Spirit.
+   </div>
+   
+   <a class="sideBtn" href="https://apps.apple.com/se/app/discipler/id6756657404" target="_blank">
+     🍎 Download app on iOS
+   </a>
+
+   <a class="sideBtn" href="https://play.google.com/store/apps/details?id=com.theway.discipler44&hl=en" target="_blank">
+     🤖 Download app on Android
+   </a>
  `;
 
  panel.classList.add("active");
@@ -501,6 +598,7 @@ function hideSidePanel() {
 function setupSearch() {
 
  const input = document.getElementById("searchInput");
+ const clearBtn = document.getElementById("clearSearch");
 
  input.addEventListener("input", () => {
 
@@ -508,11 +606,17 @@ function setupSearch() {
 
    const results = users.filter(u =>
      (u.name || "").toLowerCase().includes(val) ||
-     (u.username || "").toLowerCase().includes(val)
+     (u.username || "").toLowerCase().includes(val) ||
+     (u.church || "").toLowerCase().includes(val)
    );
 
    renderSearch(results);
  });
+
+ clearBtn.onclick = () => {
+   input.value = "";
+   document.getElementById("searchResults").innerHTML = "";
+ };
 }
 
 function renderSearch(list) {
@@ -525,7 +629,13 @@ function renderSearch(list) {
    const div = document.createElement("div");
    div.className = "search-item";
 
-   div.innerHTML = `<div><b>${u.name}</b></div>`;
+   div.innerHTML = `
+     <div class="search-icon">👤</div>
+     <div>
+       <div><b>${u.name || u.username}</b></div>
+       <div style="font-size:11px;color:gray;">${u.church || ""}</div>
+     </div>
+   `;
 
    div.onclick = () => {
      const m = markers.find(m => m.userData.username === u.username);
