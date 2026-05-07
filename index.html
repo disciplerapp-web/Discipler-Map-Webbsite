@@ -102,7 +102,7 @@ body { margin:0; padding:0; }
  min-width:260px;
  max-width:340px;
  background:white;
- z-index:10001; /* ✅ ABOVE SEARCH */
+ z-index:10001;
  transform:translateX(-110%);
  transition:transform 0.35s ease;
  box-shadow:2px 0 20px rgba(0,0,0,0.15);
@@ -174,7 +174,6 @@ body { margin:0; padding:0; }
  height:20px;
 }
 
-/* SOCIAL ICONS */
 .socialRow {
  display:flex;
  gap:10px;
@@ -195,7 +194,6 @@ body { margin:0; padding:0; }
  object-fit:cover;
 }
 
-/* APP PREVIEW */
 .appPreviewRow {
  display:flex;
  gap:10px;
@@ -208,7 +206,6 @@ body { margin:0; padding:0; }
  object-fit:cover;
 }
 
-/* TEXT */
 .downloadText {
  font-size:12px;
  color:#444;
@@ -279,8 +276,12 @@ async function fetchUsers() {
  return (json || []).map(normalizeUser);
 }
 
+/* ✅ ONLY CHANGE: now fetches posts and filters events */
 async function fetchEvents() {
- return [];
+ const res = await fetch(`${API_BASE}/posts`);
+ const json = await res.json();
+
+ return (json || []).filter(p => (p.category === "event"));
 }
 
 function normalizeUser(u) {
@@ -325,10 +326,8 @@ function createIcon(u) {
  const isChurchLeader = (u.churchPosition || "").toLowerCase() === "church leader";
  const hasProfileImage = !!u.profileImage;
 
- // OUTER RING
  const outerRing = isRecommended ? "#22c55e" : "white";
 
- // CHURCH LEADER WITH PROFILE IMAGE
  if (isChurchLeader && hasProfileImage) {
 
    return L.divIcon({
@@ -357,7 +356,6 @@ function createIcon(u) {
    });
  }
 
- // CHURCH LEADER WITHOUT PROFILE IMAGE
  if (isChurchLeader && !hasProfileImage) {
 
    return L.divIcon({
@@ -384,7 +382,6 @@ function createIcon(u) {
    });
  }
 
- // NORMAL USER
  return L.divIcon({
    className: "",
    html: `
@@ -434,7 +431,6 @@ function render() {
  });
 }
 
-/* ✅ PULSING WORKS AGAIN */
 function selectMarker(marker) {
 
  if (selectedMarker) {
