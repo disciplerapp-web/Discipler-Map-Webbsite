@@ -47,7 +47,6 @@ body { margin:0; padding:0; }
  cursor:pointer;
 }
 
-/* SEARCH RESULTS */
 #searchResults {
  background:white;
  margin-top:5px;
@@ -81,17 +80,6 @@ body { margin:0; padding:0; }
  background:#ddd;
 }
 
-/* PULSE BACK */
-.pulse {
- animation: pulseAnim 1.2s infinite;
-}
-
-@keyframes pulseAnim {
- 0% { transform: scale(1); box-shadow:0 0 0 0 rgba(74,108,247,0.6); }
- 70% { transform: scale(1.3); box-shadow:0 0 0 15px rgba(74,108,247,0); }
- 100% { transform: scale(1); box-shadow:0 0 0 0 rgba(74,108,247,0); }
-}
-
 /* SIDE PANEL */
 #sidePanel {
  position:absolute;
@@ -114,23 +102,6 @@ body { margin:0; padding:0; }
 #sidePanel.active {
  transform:translateX(0);
 }
-
-/* DEBUG BOX */
-#debugBox {
- position:absolute;
- bottom:10px;
- right:10px;
- width:360px;
- height:240px;
- background:white;
- z-index:10002;
- overflow:auto;
- font-size:10px;
- font-family:monospace;
- padding:10px;
- border:1px solid #ddd;
- box-shadow:0 2px 10px rgba(0,0,0,0.2);
-}
 </style>
 </head>
 
@@ -146,19 +117,16 @@ body { margin:0; padding:0; }
 
 <div id="sidePanel"></div>
 
-<!-- DEBUG BOX -->
-<div id="debugBox"></div>
-
 <script>
 const API_BASE = "https://zjt4sxvh0l.execute-api.eu-north-1.amazonaws.com";
 
 let map;
 let users = [];
-let posts = [];
+let events = [];
 let hasRendered = false;
 
 let markers = [];
-let postMarkers = [];
+let eventMarkers = [];
 let selectedMarker = null;
 
 init();
@@ -179,15 +147,13 @@ function init() {
 
 async function loadData() {
 
- const [u, p] = await Promise.all([
+ const [u, e] = await Promise.all([
    fetchUsers(),
-   fetchPosts()
+   fetchEvents()
  ]);
 
  users = u;
- posts = p;
-
- updateDebug();
+ events = e;
 
  if (!hasRendered) {
    hasRendered = true;
@@ -195,36 +161,40 @@ async function loadData() {
  }
 }
 
-/* USERS */
 async function fetchUsers() {
  const res = await fetch(`${API_BASE}/users`);
  const json = await res.json();
  return (json || []).map(normalizeUser);
 }
 
-/* POSTS (EVENTS ONLY) */
-async function fetchPosts() {
+/* ✅ FIXED: REAL POST FETCH + FILTER */
+async function fetchEvents() {
  const res = await fetch(`${API_BASE}/posts`);
  const json = await res.json();
 
- const filtered = (json || []).filter(p => p.category === "Event");
+ const items = json || [];
 
- return filtered.map(p => {
+ return items
+   .map(p => {
 
-   let lat = 0, lng = 0;
+     let lat = 0;
+     let lng = 0;
 
-   if (p.location) {
-     const parts = p.location.split(",");
-     lat = parseFloat(parts[0]);
-     lng = parseFloat(parts[1]);
-   }
+     if (p.location) {
+       const parts = p.location.split(",");
+       lat = parseFloat(parts[0]);
+       lng = parseFloat(parts[1]);
+     }
 
-   return {
-     ...p,
-     latitude: lat,
-     longitude: lng
-   };
- });
+     return {
+       ...p,
+       latitude: lat,
+       longitude: lng
+     };
+   })
+   .filter(p =>
+     (p.category || "").toLowerCase() === "event"
+   );
 }
 
 function normalizeUser(u) {
@@ -254,19 +224,25 @@ function normalizeUser(u) {
 function createIcon() {
  return L.divIcon({
    className: "",
-   html: `<div style="width:30px;height:30px;border-radius:50%;background:#4a6cf7;display:flex;align-items:center;justify-content:center;color:white;">👤</div>`,
-   iconSize: [30,30],
-   iconAnchor: [15,15]
+   html: `
+     <div style="width:30px;height:30px;border-radius:50%;background:#4a6cf7;
+     display:flex;align-items:center;justify-content:center;color:white;">
+       👤
+     </div>
+   `
  });
 }
 
-/* FIRE ICON FOR EVENTS */
-function createFireIcon() {
+/* 🔥 EVENT ICON */
+function createEventIcon() {
  return L.divIcon({
    className: "",
-   html: `<div style="width:30px;height:30px;border-radius:50%;background:#ff4500;display:flex;align-items:center;justify-content:center;color:white;">🔥</div>`,
-   iconSize: [30,30],
-   iconAnchor: [15,15]
+   html: `
+     <div style="width:30px;height:30px;border-radius:50%;background:red;
+     display:flex;align-items:center;justify-content:center;color:white;">
+       🔥
+     </div>
+   `
  });
 }
 
@@ -277,7 +253,7 @@ function render() {
  });
 
  markers = [];
- postMarkers = [];
+ eventMarkers = [];
 
  /* USERS */
  users.filter(u => !u.ghostMode).forEach(u => {
@@ -289,50 +265,34 @@ function render() {
    marker.userData = u;
 
    marker.on("click", () => {
-     selectMarker(marker);
      showSidePanel(u);
    });
 
    markers.push(marker);
  });
 
- /* POSTS (EVENTS) */
- posts.forEach(p => {
+ /* 🔥 EVENTS */
+ events.forEach(e => {
 
-   if (!p.latitude || !p.longitude) return;
+   if (!e.latitude || !e.longitude) return;
 
-   const marker = L.marker([p.latitude, p.longitude], {
-     icon: createFireIcon()
+   const marker = L.marker([e.latitude, e.longitude], {
+     icon: createEventIcon()
    }).addTo(map);
 
-   marker.postData = p;
+   marker.eventData = e;
 
    marker.on("click", () => {
-
-     const fakeUser = {
-       name: p.title || "Event",
-       username: p.username || "",
-       bio: p.description || "",
-       profileImage: p.photo ? `https://your-bucket/${p.photo}` : ""
-     };
-
-     showSidePanel(fakeUser);
+     showSidePanel({
+       name: e.title || "Event",
+       username: e.username || "",
+       church: e.description || "",
+       bio: e.category || "Event"
+     });
    });
 
-   postMarkers.push(marker);
+   eventMarkers.push(marker);
  });
-}
-
-/* DEBUG BOX */
-function updateDebug() {
- document.getElementById("debugBox").innerText =
- "USERS:\n" + JSON.stringify(users, null, 2) +
- "\n\nPOSTS:\n" + JSON.stringify(posts, null, 2);
-}
-
-function selectMarker(marker) {
- selectedMarker = marker;
- map.setView(marker.getLatLng(), map.getZoom());
 }
 
 function showSidePanel(u) {
@@ -340,8 +300,9 @@ function showSidePanel(u) {
  const panel = document.getElementById("sidePanel");
 
  panel.innerHTML = `
-   <div style="font-size:18px;font-weight:700;">${u.name || ""}</div>
+   <div style="font-weight:700;font-size:18px;">${u.name || ""}</div>
    <div>@${u.username || ""}</div>
+   <div>${u.church || ""}</div>
    <div>${u.bio || ""}</div>
  `;
 
@@ -352,7 +313,38 @@ function hideSidePanel() {
  document.getElementById("sidePanel").classList.remove("active");
 }
 
-function setupSearch() {}
+function setupSearch() {
+
+ const input = document.getElementById("searchInput");
+
+ input.addEventListener("input", () => {
+
+   const val = input.value.toLowerCase();
+
+   const results = users.filter(u =>
+     (u.name || "").toLowerCase().includes(val) ||
+     (u.username || "").toLowerCase().includes(val)
+   );
+
+   renderSearch(results);
+ });
+}
+
+function renderSearch(list) {
+
+ const box = document.getElementById("searchResults");
+ box.innerHTML = "";
+
+ list.slice(0, 20).forEach(u => {
+
+   const div = document.createElement("div");
+   div.className = "search-item";
+
+   div.innerHTML = `<div>${u.name}</div>`;
+
+   box.appendChild(div);
+ });
+}
 </script>
 
 </body>
