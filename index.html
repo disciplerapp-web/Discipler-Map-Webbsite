@@ -323,11 +323,68 @@ function createIcon(u) {
 
  const isRecommended = !!u.recommended;
  const isChurchLeader = (u.churchPosition || "").toLowerCase() === "church leader";
+ const hasProfileImage = !!u.profileImage;
 
- let bg = "#4a6cf7";
- if (isChurchLeader) bg = "#f59e0b";
- if (isRecommended) bg = "#22c55e";
+ // OUTER RING
+ const outerRing = isRecommended ? "#22c55e" : "white";
 
+ // CHURCH LEADER WITH PROFILE IMAGE
+ if (isChurchLeader && hasProfileImage) {
+
+   return L.divIcon({
+     className: "",
+     html: `
+       <div class="marker-inner" style="
+         width:34px;
+         height:34px;
+         border-radius:50%;
+         background:${outerRing};
+         display:flex;
+         align-items:center;
+         justify-content:center;
+         box-shadow:0 2px 6px rgba(0,0,0,0.3);
+       ">
+         <img src="${u.profileImage}" style="
+           width:28px;
+           height:28px;
+           border-radius:50%;
+           object-fit:cover;
+         "/>
+       </div>
+     `,
+     iconSize: [34, 34],
+     iconAnchor: [17, 17]
+   });
+ }
+
+ // CHURCH LEADER WITHOUT PROFILE IMAGE
+ if (isChurchLeader && !hasProfileImage) {
+
+   return L.divIcon({
+     className: "",
+     html: `
+       <div class="marker-inner" style="
+         width:30px;
+         height:30px;
+         border-radius:50%;
+         background:#4a6cf7;
+         display:flex;
+         align-items:center;
+         justify-content:center;
+         color:white;
+         font-size:14px;
+         border:2px solid ${outerRing};
+         box-shadow:0 2px 6px rgba(0,0,0,0.3);
+       ">
+         🏛️
+       </div>
+     `,
+     iconSize: [30, 30],
+     iconAnchor: [15, 15]
+   });
+ }
+
+ // NORMAL USER
  return L.divIcon({
    className: "",
    html: `
@@ -335,16 +392,16 @@ function createIcon(u) {
        width:30px;
        height:30px;
        border-radius:50%;
-       background:${bg};
+       background:#4a6cf7;
        display:flex;
        align-items:center;
        justify-content:center;
        color:white;
        font-size:14px;
-       border:2px solid white;
+       border:2px solid ${outerRing};
        box-shadow:0 2px 6px rgba(0,0,0,0.3);
      ">
-       ${isChurchLeader ? "🏛️" : "👤"}
+       👤
      </div>
    `,
    iconSize: [30, 30],
