@@ -483,21 +483,48 @@ function render() {
 
  markers = [];
 
- users.filter(u => !u.ghostMode).forEach(u => {
+users.filter(u => !u.ghostMode).forEach(u => {
 
-   const marker = L.marker([u.latitude, u.longitude], {
-     icon: createIcon(u)
-   }).addTo(map);
+  // Create marker first with default logic
+  const marker = L.marker([u.latitude, u.longitude], {
+    icon: createIcon({
+      ...u,
+      profileImage: null // assume no image first
+    })
+  }).addTo(map);
 
-   marker.userData = u;
+  // Check if image actually exists in S3
+  if (u.profileImage) {
 
-   marker.on("click", () => {
-     selectMarker(marker);
-     showSidePanel(u);
-   });
+    const testImg = new Image();
 
-   markers.push(marker);
- });
+    testImg.onload = () => {
+
+      // Image exists -> switch marker to image version
+      marker.setIcon(createIcon(u));
+    };
+
+    testImg.onerror = () => {
+
+      // Image missing -> keep church icon
+      marker.setIcon(createIcon({
+        ...u,
+        profileImage: null
+      }));
+    };
+
+    testImg.src = u.profileImage;
+  }
+
+  marker.userData = u;
+
+  marker.on("click", () => {
+    selectMarker(marker);
+    showSidePanel(u);
+  });
+
+  markers.push(marker);
+});
 
  // 🔥 ADDED: POSTS / EVENTS ON MAP
  posts.forEach(p => {
