@@ -174,6 +174,7 @@ body { margin:0; padding:0; }
  height:20px;
 }
 
+/* SOCIAL ICONS */
 .socialRow {
  display:flex;
  gap:10px;
@@ -194,6 +195,7 @@ body { margin:0; padding:0; }
  object-fit:cover;
 }
 
+/* APP PREVIEW */
 .appPreviewRow {
  display:flex;
  gap:10px;
@@ -206,6 +208,7 @@ body { margin:0; padding:0; }
  object-fit:cover;
 }
 
+/* TEXT */
 .downloadText {
  font-size:12px;
  color:#444;
@@ -232,11 +235,12 @@ const API_BASE = "https://zjt4sxvh0l.execute-api.eu-north-1.amazonaws.com";
 
 let map;
 let users = [];
-let events = []; // ✅ ADDED (used for event markers)
+let events = [];
+let posts = []; // 🔥 ADDED
 let hasRendered = false;
 
 let markers = [];
-let eventMarkers = []; // ✅ ADDED
+let eventMarkers = []; // 🔥 ADDED
 let selectedMarker = null;
 
 init();
@@ -257,13 +261,15 @@ function init() {
 
 async function loadData() {
 
- const [u, e] = await Promise.all([
+ const [u, e, p] = await Promise.all([
    fetchUsers(),
-   fetchEvents() // ✅ ADDED
+   fetchEvents(),
+   fetchPosts() // 🔥 ADDED
  ]);
 
  users = u;
  events = e;
+ posts = p;
 
  if (!hasRendered) {
    hasRendered = true;
@@ -277,19 +283,26 @@ async function fetchUsers() {
  return (json || []).map(normalizeUser);
 }
 
-/* ✅ ADDED: FETCH EVENTS */
 async function fetchEvents() {
+ return [];
+}
+
+/* 🔥 ADDED: POSTS FETCH */
+async function fetchPosts() {
  const res = await fetch(`${API_BASE}/posts`);
  const json = await res.json();
 
  return (json || [])
-   .filter(p => (p.category || "").toLowerCase() === "event")
+   .filter(p =>
+     (p.category?.S || p.category || "").toLowerCase() === "event"
+   )
    .map(p => {
 
+     let loc = p.location?.S || p.location || "";
      let lat = 0, lng = 0;
 
-     if (p.location) {
-       const parts = p.location.split(",");
+     if (loc.includes(",")) {
+       const parts = loc.split(",");
        lat = parseFloat(parts[0]);
        lng = parseFloat(parts[1]);
      }
@@ -339,57 +352,21 @@ function normalizeUser(u) {
 }
 
 function createIcon(u) {
-
- const isRecommended = !!u.recommended;
- const isChurchLeader = (u.churchPosition || "").toLowerCase() === "church leader";
- const hasProfileImage = !!u.profileImage;
-
- const outerRing = isRecommended ? "#22c55e" : "white";
-
- if (isChurchLeader && hasProfileImage) {
-   return L.divIcon({
-     className: "",
-     html: `
-       <div class="marker-inner" style="
-         width:34px;height:34px;border-radius:50%;
-         background:${outerRing};
-         display:flex;align-items:center;justify-content:center;">
-         <img src="${u.profileImage}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;"/>
-       </div>
-     `,
-     iconSize: [34, 34],
-     iconAnchor: [17, 17]
-   });
- }
-
  return L.divIcon({
    className: "",
-   html: `
-     <div class="marker-inner" style="
-       width:30px;height:30px;border-radius:50%;
-       background:#4a6cf7;
-       display:flex;align-items:center;justify-content:center;color:white;">
-       👤
-     </div>
-   `,
+   html: `<div style="width:30px;height:30px;border-radius:50%;background:#4a6cf7;
+   display:flex;align-items:center;justify-content:center;color:white;">👤</div>`,
    iconSize: [30, 30],
    iconAnchor: [15, 15]
  });
 }
 
-/* 🔥 EVENT ICON (ADDED) */
+/* 🔥 ADDED EVENT ICON */
 function createEventIcon() {
  return L.divIcon({
    className: "",
-   html: `
-     <div style="
-       width:30px;height:30px;border-radius:50%;
-       background:red;
-       display:flex;align-items:center;justify-content:center;
-       color:white;">
-       🔥
-     </div>
-   `,
+   html: `<div style="width:30px;height:30px;border-radius:50%;background:red;
+   display:flex;align-items:center;justify-content:center;color:white;">🔥</div>`,
    iconSize: [30, 30],
    iconAnchor: [15, 15]
  });
@@ -402,7 +379,7 @@ function render() {
  });
 
  markers = [];
- eventMarkers = [];
+ eventMarkers = []; // 🔥 ADDED
 
  /* USERS */
  users.filter(u => !u.ghostMode).forEach(u => {
@@ -414,34 +391,47 @@ function render() {
    marker.userData = u;
 
    marker.on("click", () => {
+     selectMarker(marker);
      showSidePanel(u);
    });
 
    markers.push(marker);
  });
 
- /* 🔥 EVENTS (ADDED) */
- events.forEach(e => {
+ /* 🔥 ADDED EVENTS */
+ posts.forEach(p => {
 
-   if (!e.latitude || !e.longitude) return;
+   if (!p.latitude || !p.longitude) return;
 
-   const marker = L.marker([e.latitude, e.longitude], {
+   const marker = L.marker([p.latitude, p.longitude], {
      icon: createEventIcon()
    }).addTo(map);
 
-   marker.eventData = e;
+   marker.userData = {
+     name: p.title || "Event",
+     username: "event",
+     bio: p.description || "",
+     email: "",
+     profileImage: p.photo || ""
+   };
 
    marker.on("click", () => {
-     showSidePanel({
-       name: e.title || "Event",
-       username: e.username || "",
-       church: e.description || "",
-       bio: e.category || "Event"
-     });
+     selectMarker(marker);
+     showSidePanel(marker.userData);
    });
 
    eventMarkers.push(marker);
  });
+}
+
+/* unchanged */
+function selectMarker(marker) {
+ if (selectedMarker) {
+   const prev = selectedMarker.getElement()?.querySelector(".marker-inner");
+   if (prev) prev.classList.remove("pulse");
+ }
+ selectedMarker = marker;
+ map.setView(marker.getLatLng(), map.getZoom());
 }
 
 function showSidePanel(u) {
@@ -450,10 +440,20 @@ function showSidePanel(u) {
 
  panel.innerHTML = `
    <img class="sideProfileImg" src="${u.profileImage || 'https://via.placeholder.com/100'}"/>
+
    <div class="sideName">${u.name || ""}</div>
    <div class="sideUsername">@${u.username || ""}</div>
    <div class="sideChurch">${u.church || ""}</div>
    <div class="sideBio">${u.bio || ""}</div>
+
+   <div class="appPreviewRow">
+     <img src="app_preview_1.png" />
+     <img src="app_preview_2.png" />
+   </div>
+
+   <div class="downloadText">
+     Download app...
+   </div>
  `;
 
  panel.classList.add("active");
@@ -491,6 +491,15 @@ function renderSearch(list) {
    div.className = "search-item";
 
    div.innerHTML = `<div><b>${u.name}</b></div>`;
+
+   div.onclick = () => {
+     const m = markers.find(m => m.userData.username === u.username);
+     if (m) {
+       selectMarker(m);
+       showSidePanel(u);
+     }
+   };
+
    box.appendChild(div);
  });
 }
