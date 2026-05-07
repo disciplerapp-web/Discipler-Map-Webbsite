@@ -280,7 +280,40 @@ async function fetchUsers() {
 }
 
 async function fetchEvents() {
- return [];
+
+ const query = `
+   query ListPosts {
+     listPosts {
+       items {
+         id
+         title
+         description
+         photo
+         category
+         location
+         username
+         timestamp
+       }
+     }
+   }
+ `;
+
+ const res = await fetch(API_BASE + "/graphql", {
+   method: "POST",
+   headers: { "Content-Type": "application/json" },
+   body: JSON.stringify({ query })
+ });
+
+ const json = await res.json();
+
+ return (json?.data?.listPosts?.items || [])
+   .filter(p => p.category === "events")
+   .map(p => ({
+     ...p,
+     latitude: 59.3293,
+     longitude: 18.0686,
+     isEvent: true
+   }));
 }
 
 function normalizeUser(u) {
@@ -318,7 +351,29 @@ function normalizeUser(u) {
    longitude: parseFloat(lngRaw)
  };
 }
-
+function createEventIcon() {
+ return L.divIcon({
+   className: "",
+   html: `
+     <div class="marker-inner" style="
+       width:30px;
+       height:30px;
+       border-radius:50%;
+       background:#ff4500;
+       display:flex;
+       align-items:center;
+       justify-content:center;
+       color:white;
+       font-size:16px;
+       box-shadow:0 2px 6px rgba(0,0,0,0.3);
+     ">
+       🔥
+     </div>
+   `,
+   iconSize: [30, 30],
+   iconAnchor: [15, 15]
+ });
+} 
 function createIcon(u) {
 
  const isRecommended = !!u.recommended;
@@ -417,6 +472,7 @@ function render() {
 
  markers = [];
 
+ // USERS (UNCHANGED)
  users.filter(u => !u.ghostMode).forEach(u => {
 
    const marker = L.marker([u.latitude, u.longitude], {
@@ -428,6 +484,23 @@ function render() {
    marker.on("click", () => {
      selectMarker(marker);
      showSidePanel(u);
+   });
+
+   markers.push(marker);
+ });
+
+ // EVENTS (NEW)
+ events.forEach(e => {
+
+   const marker = L.marker([e.latitude, e.longitude], {
+     icon: createEventIcon()
+   }).addTo(map);
+
+   marker.userData = e;
+
+   marker.on("click", () => {
+     selectMarker(marker);
+     showSidePanel(e);
    });
 
    markers.push(marker);
@@ -467,8 +540,12 @@ function showSidePanel(u) {
    </a>`;
  }).join("");
 
- panel.innerHTML = `
-   <img class="sideProfileImg" src="${u.profileImage || 'https://via.placeholder.com/100'}"/>
+panel.innerHTML = `
+   ${u.isEvent ? `
+     <img class="sideProfileImg" src="${u.photo || 'https://via.placeholder.com/100'}"/>
+   ` : `
+     <img class="sideProfileImg" src="${u.profileImage || 'https://via.placeholder.com/100'}"/>
+   `}
 
    <div class="sideName">${u.name || ""}</div>
    <div class="sideUsername">@${u.username || ""}</div>
