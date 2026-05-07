@@ -495,14 +495,20 @@ function render() {
      icon: createEventIcon()
    }).addTo(map);
 
-   marker.userData = {
-     name: p.title || "Event",
-     username: "event",
-     bio: p.description || "",
-     email: "",
-     profileImage: p.photo || null,
-     photo: p.photo || null
-   };
+const eventPhotoKey = p.photo?.S || p.photo || null;
+
+const eventPhotoUrl = eventPhotoKey
+  ? `https://discipler221e46f-prod.s3.eu-north-1.amazonaws.com/public/uploads/${eventPhotoKey}`
+  : null;
+
+marker.userData = {
+  name: p.title || "Event",
+  username: "event",
+  bio: p.description || "",
+  email: "",
+  profileImage: eventPhotoUrl,
+  photo: eventPhotoUrl
+};
 
    marker.on("click", () => {
      selectMarker(marker);
