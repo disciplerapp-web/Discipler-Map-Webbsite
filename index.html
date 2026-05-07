@@ -91,8 +91,12 @@ body { margin:0; padding:0; }
  70% { transform: scale(1.3); box-shadow:0 0 0 15px rgba(74,108,247,0); }
  100% { transform: scale(1); box-shadow:0 0 0 0 rgba(74,108,247,0); }
 }
-
-
+@keyframes pulseAnimGreen {
+ 0% { transform: scale(1); box-shadow:0 0 0 0 rgba(46,234,107,0.6); }
+ 70% { transform: scale(1.3); box-shadow:0 0 0 15px rgba(46,234,107,0); }
+ 100% { transform: scale(1); box-shadow:0 0 0 0 rgba(46,234,107,0); }
+}
+ 
 /* SIDE PANEL */
 #sidePanel {
  position:absolute;
@@ -390,30 +394,39 @@ function createIcon(u) {
  }
 
  // CHURCH LEADER WITHOUT PROFILE IMAGE
- if (isChurchLeader && !hasProfileImage) {
+// CHURCH LEADER WITHOUT PROFILE IMAGE
+if (isChurchLeader && !hasProfileImage) {
 
-   return L.divIcon({
-     className: "",
-     html: `
-       <div class="marker-inner" style="
-         width:30px;
-         height:30px;
-         border-radius:50%;
-         background:#4a6cf7;
-         display:flex;
-         align-items:center;
-         justify-content:center;
-         color:white;
-         font-size:14px;
-         border:2px solid ${outerRing};
-         box-shadow:0 2px 6px rgba(0,0,0,0.3);
-       ">
-         🏛️
-       </div>
-     `,
-     iconSize: [30, 30],
-     iconAnchor: [15, 15]
-   });
+  return L.divIcon({
+    className: "",
+    html: `
+      <div class="marker-inner" style="
+        width:34px;
+        height:34px;
+        border-radius:50%;
+        background:${outerRing};
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        box-shadow:0 2px 6px rgba(0,0,0,0.3);
+      ">
+        <div style="
+          width:28px;
+          height:28px;
+          border-radius:50%;
+          background:white;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          font-size:15px;
+        ">
+          🏛️
+        </div>
+      </div>
+    `,
+    iconSize: [34, 34],
+    iconAnchor: [17, 17]
+  });
  }
 
  // NORMAL USER
@@ -498,7 +511,7 @@ function render() {
 const eventPhotoKey = p.photo?.S || p.photo || null;
 
 const eventPhotoUrl = eventPhotoKey
-  ? `https://discipler221e46f-prod.s3.eu-north-1.amazonaws.com/public/uploads/${eventPhotoKey}`
+  ? `https://discipler221e46f-prod.s3.eu-north-1.amazonaws.com/public/${eventPhotoKey}`
   : null;
 
 marker.userData = {
@@ -523,8 +536,13 @@ marker.userData = {
 function selectMarker(marker) {
 
  if (selectedMarker) {
+
    const prev = selectedMarker.getElement()?.querySelector(".marker-inner");
-   if (prev) prev.classList.remove("pulse");
+
+   if (prev) {
+     prev.classList.remove("pulse");
+     prev.style.animation = "";
+   }
  }
 
  selectedMarker = marker;
@@ -532,7 +550,14 @@ function selectMarker(marker) {
  const el = marker.getElement()?.querySelector(".marker-inner");
 
  if (el && marker.userData?.username !== "event") {
+
    el.classList.add("pulse");
+
+   if (marker.userData?.recommended) {
+     el.style.animation = "pulseAnimGreen 1.2s infinite";
+   } else {
+     el.style.animation = "pulseAnim 1.2s infinite";
+   }
  }
 
  map.setView(marker.getLatLng(), map.getZoom());
