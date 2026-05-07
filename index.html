@@ -304,7 +304,9 @@ async function fetchEvents() {
 
    logDebug("Posts raw", json?.length);
 
-   const filtered = (json || []).filter(p => p.category === "event");
+   const filtered = (json || []).filter(p =>
+     p.category?.S === "event"
+   );
 
    logDebug("Filtered events", filtered.length);
 
