@@ -280,27 +280,7 @@ async function fetchUsers() {
 }
 
 async function fetchEvents() {
-
- const res = await fetch(`${API_BASE}/posts`);
- const json = await res.json();
-
- return (json || []).map(e => {
-
-   const loc = e.location?.M || e.location;
-
-   const latRaw = loc?.latitude?.N ?? loc?.latitude;
-   const lngRaw = loc?.longitude?.N ?? loc?.longitude;
-
-   return {
-     ...e,
-     title: e.title?.S || e.title,
-     description: e.description?.S || e.description,
-     photo: e.photo?.S || e.photo,
-     startDate: e.startDate?.S || e.startDate,
-     latitude: parseFloat(latRaw),
-     longitude: parseFloat(lngRaw)
-   };
- });
+ return [];
 }
 
 function normalizeUser(u) {
@@ -403,7 +383,6 @@ function createIcon(u) {
      iconAnchor: [15, 15]
    });
  }
- 
 
  // NORMAL USER
  return L.divIcon({
@@ -429,33 +408,7 @@ function createIcon(u) {
    iconAnchor: [15, 15]
  });
 }
- 
-function createEventIcon() {
 
- return L.divIcon({
-   className: "",
-   html: `
-     <div class="marker-inner" style="
-       width:30px;
-       height:30px;
-       border-radius:50%;
-       background:#ef4444;
-       display:flex;
-       align-items:center;
-       justify-content:center;
-       color:white;
-       font-size:16px;
-       border:2px solid white;
-       box-shadow:0 2px 6px rgba(0,0,0,0.3);
-     ">
-       🔥
-     </div>
-   `,
-   iconSize: [30, 30],
-   iconAnchor: [15, 15]
- });
-}
- 
 function render() {
 
  map.eachLayer(layer => {
@@ -464,7 +417,6 @@ function render() {
 
  markers = [];
 
- // USERS
  users.filter(u => !u.ghostMode).forEach(u => {
 
    const marker = L.marker([u.latitude, u.longitude], {
@@ -476,43 +428,6 @@ function render() {
    marker.on("click", () => {
      selectMarker(marker);
      showSidePanel(u);
-   });
-
-   markers.push(marker);
- });
-
- // EVENTS
- events.forEach(e => {
-
-   if (!e.latitude || !e.longitude) return;
-
-   const marker = L.marker([e.latitude, e.longitude], {
-     icon: createEventIcon()
-   }).addTo(map);
-
-   marker.eventData = e;
-
-   marker.on("click", () => {
-
-     selectMarker(marker);
-
-     const panel = document.getElementById("sidePanel");
-
-     panel.innerHTML = `
-       <img class="sideProfileImg" src="${e.photo || 'https://via.placeholder.com/100'}"/>
-
-       <div class="sideName">${e.title || ""}</div>
-
-       <div class="sideChurch">
-         ${e.startDate || ""}
-       </div>
-
-       <div class="sideBio">
-         ${e.description || ""}
-       </div>
-     `;
-
-     panel.classList.add("active");
    });
 
    markers.push(marker);
