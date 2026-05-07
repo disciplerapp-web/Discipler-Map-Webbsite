@@ -215,45 +215,12 @@ body { margin:0; padding:0; }
  margin-top:10px;
  line-height:1.4;
 }
-#debugBox {
- position:absolute;
- bottom:10px;
- left:10px;
- width:360px;
- max-height:220px;
- overflow:auto;
- background:white;
- border:1px solid #ddd;
- border-radius:10px;
- padding:10px;
- font-size:11px;
- font-family:monospace;
- z-index:99999;
- box-shadow:0 2px 10px rgba(0,0,0,0.2);
-} 
 </style>
 </head>
 
 <body>
 
 <div id="map"></div>
-
-<div id="debugBox"></div>
- 
-window.onerror = function (message, source, lineno, colno, error) {
-  const box = document.getElementById("debugBox");
-
-  if (box) {
-    box.innerHTML += `
-      <div style="color:red;">
-        ❌ JS ERROR: ${message}<br>
-        Line: ${lineno}:${colno}
-      </div><hr>
-    `;
-  }
-
-  console.error("GLOBAL ERROR:", message, error);
-}; 
 
 <div id="searchContainer">
   <input id="searchInput" placeholder="Search users..." />
@@ -278,8 +245,6 @@ init();
 
 function init() {
 
- logDebug("INIT STARTED");
-
  map = L.map('map').setView([59.3293, 18.0686], 10);
 
  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -294,8 +259,6 @@ function init() {
 
 async function loadData() {
 
- logDebug("Loading data...");
-
  const [u, e] = await Promise.all([
    fetchUsers(),
    fetchEvents()
@@ -303,10 +266,6 @@ async function loadData() {
 
  users = u;
  events = e;
-
- logDebug("Users loaded", users.length);
- logDebug("Events loaded", events.length);
- logDebug("Raw events sample", events[0]);
 
  if (!hasRendered) {
    hasRendered = true;
@@ -321,94 +280,9 @@ async function fetchUsers() {
 }
 
 async function fetchEvents() {
-
- const query = `
-   query ListPosts {
-     listPosts {
-       items {
-         id
-         title
-         description
-         photo
-         category
-         location
-         username
-         timestamp
-       }
-     }
-   }
- `;
-
-const res = await fetch(API_BASE + "/graphql", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ query })
-});
-
-logDebug("HTTP STATUS", res.status);
-
-if (!res.ok) {
-  logDebug("GRAPHQL HTTP ERROR", {
-    status: res.status,
-    statusText: res.statusText
-  });
-  return [];
+ return [];
 }
 
-const json = await res.json();
-
-logDebug("GraphQL raw response", json);
-
-if (json.errors) {
-  logDebug("GRAPHQL ERRORS", json.errors);
-}
-
-logDebug("GraphQL raw response", json);
-
-const items = json?.data?.listPosts?.items || [];
-
-logDebug("All posts count", items.length);
-logDebug("First post", items[0]);
-
-const filtered = items.filter(p => p.category === "events");
-
-logDebug("Filtered events count", filtered.length);
-
-return filtered.map(p => ({
-  ...p,
-  latitude: 59.3293,
-  longitude: 18.0686,
-  isEvent: true
-}));
-}
-function logDebug(msg, data) {
-
- const box = document.getElementById("debugBox");
-
- if (!box) {
-   console.log("DEBUG BOX NOT READY:", msg, data);
-   return;
- }
-
- const time = new Date().toLocaleTimeString();
-
- const line = document.createElement("div");
- line.style.marginBottom = "6px";
-
- line.innerHTML = `
-   <div style="color:#666;">[${time}]</div>
-   <div>${msg}</div>
-   ${data !== undefined ? `<pre style="white-space:pre-wrap;color:#333;">${JSON.stringify(data, null, 2)}</pre>` : ""}
-   <hr>
- `;
-
- box.appendChild(line);
-
- box.scrollTop = box.scrollHeight;
-
- console.log(msg, data);
-}
- 
 function normalizeUser(u) {
 
  const loc = u.location?.M || u.location;
@@ -444,29 +318,7 @@ function normalizeUser(u) {
    longitude: parseFloat(lngRaw)
  };
 }
-function createEventIcon() {
- return L.divIcon({
-   className: "",
-   html: `
-     <div class="marker-inner" style="
-       width:30px;
-       height:30px;
-       border-radius:50%;
-       background:#ff4500;
-       display:flex;
-       align-items:center;
-       justify-content:center;
-       color:white;
-       font-size:16px;
-       box-shadow:0 2px 6px rgba(0,0,0,0.3);
-     ">
-       🔥
-     </div>
-   `,
-   iconSize: [30, 30],
-   iconAnchor: [15, 15]
- });
-} 
+
 function createIcon(u) {
 
  const isRecommended = !!u.recommended;
@@ -565,7 +417,6 @@ function render() {
 
  markers = [];
 
- // USERS (UNCHANGED)
  users.filter(u => !u.ghostMode).forEach(u => {
 
    const marker = L.marker([u.latitude, u.longitude], {
@@ -577,23 +428,6 @@ function render() {
    marker.on("click", () => {
      selectMarker(marker);
      showSidePanel(u);
-   });
-
-   markers.push(marker);
- });
-
- // EVENTS (NEW)
- events.forEach(e => {
-
-   const marker = L.marker([e.latitude, e.longitude], {
-     icon: createEventIcon()
-   }).addTo(map);
-
-   marker.userData = e;
-
-   marker.on("click", () => {
-     selectMarker(marker);
-     showSidePanel(e);
    });
 
    markers.push(marker);
@@ -633,12 +467,8 @@ function showSidePanel(u) {
    </a>`;
  }).join("");
 
-panel.innerHTML = `
-   ${u.isEvent ? `
-     <img class="sideProfileImg" src="${u.photo || 'https://via.placeholder.com/100'}"/>
-   ` : `
-     <img class="sideProfileImg" src="${u.profileImage || 'https://via.placeholder.com/100'}"/>
-   `}
+ panel.innerHTML = `
+   <img class="sideProfileImg" src="${u.profileImage || 'https://via.placeholder.com/100'}"/>
 
    <div class="sideName">${u.name || ""}</div>
    <div class="sideUsername">@${u.username || ""}</div>
