@@ -47,6 +47,7 @@ body { margin:0; padding:0; }
  cursor:pointer;
 }
 
+/* SEARCH RESULTS */
 #searchResults {
  background:white;
  margin-top:5px;
@@ -80,6 +81,17 @@ body { margin:0; padding:0; }
  background:#ddd;
 }
 
+/* PULSE BACK (was missing) */
+.pulse {
+ animation: pulseAnim 1.2s infinite;
+}
+
+@keyframes pulseAnim {
+ 0% { transform: scale(1); box-shadow:0 0 0 0 rgba(74,108,247,0.6); }
+ 70% { transform: scale(1.3); box-shadow:0 0 0 15px rgba(74,108,247,0); }
+ 100% { transform: scale(1); box-shadow:0 0 0 0 rgba(74,108,247,0); }
+}
+
 /* SIDE PANEL */
 #sidePanel {
  position:absolute;
@@ -90,7 +102,7 @@ body { margin:0; padding:0; }
  min-width:260px;
  max-width:340px;
  background:white;
- z-index:10001;
+ z-index:10001; /* ✅ ABOVE SEARCH */
  transform:translateX(-110%);
  transition:transform 0.35s ease;
  box-shadow:2px 0 20px rgba(0,0,0,0.15);
@@ -101,6 +113,107 @@ body { margin:0; padding:0; }
 
 #sidePanel.active {
  transform:translateX(0);
+}
+
+.sideProfileImg {
+ width:110px;
+ height:110px;
+ border-radius:50%;
+ object-fit:cover;
+ border:3px solid #ddd;
+ margin-top:10px;
+}
+
+.sideName {
+ font-size:20px;
+ font-weight:700;
+ margin-top:12px;
+}
+
+.sideUsername {
+ font-size:13px;
+ color:gray;
+}
+
+.sideChurch {
+ font-size:13px;
+ margin-top:6px;
+ color:#333;
+}
+
+.sideBio {
+ font-size:12px;
+ margin-top:10px;
+ color:#444;
+}
+
+.sideButtons {
+ display:flex;
+ flex-direction:column;
+ gap:10px;
+ margin-top:16px;
+}
+
+.sideBtn {
+ background:#e5e5e5;
+ padding:10px;
+ border-radius:10px;
+ text-align:center;
+ text-decoration:none;
+ color:black;
+ font-size:13px;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ gap:8px;
+ margin-top:10px;
+}
+
+.emailIcon svg {
+ width:20px;
+ height:20px;
+}
+
+/* SOCIAL ICONS */
+.socialRow {
+ display:flex;
+ gap:10px;
+ margin-top:12px;
+}
+
+.socialIcon {
+ width:36px;
+ height:36px;
+ border-radius:50%;
+ overflow:hidden;
+ display:block;
+}
+
+.socialIcon img {
+ width:100%;
+ height:100%;
+ object-fit:cover;
+}
+
+/* APP PREVIEW */
+.appPreviewRow {
+ display:flex;
+ gap:10px;
+ margin-top:14px;
+}
+
+.appPreviewRow img {
+ width:48%;
+ border-radius:12px;
+ object-fit:cover;
+}
+
+/* TEXT */
+.downloadText {
+ font-size:12px;
+ color:#444;
+ margin-top:10px;
+ line-height:1.4;
 }
 </style>
 </head>
@@ -126,7 +239,6 @@ let events = [];
 let hasRendered = false;
 
 let markers = [];
-let eventMarkers = [];
 let selectedMarker = null;
 
 init();
@@ -167,34 +279,8 @@ async function fetchUsers() {
  return (json || []).map(normalizeUser);
 }
 
-/* ✅ FIXED: REAL POST FETCH + FILTER */
 async function fetchEvents() {
- const res = await fetch(`${API_BASE}/posts`);
- const json = await res.json();
-
- const items = json || [];
-
- return items
-   .map(p => {
-
-     let lat = 0;
-     let lng = 0;
-
-     if (p.location) {
-       const parts = p.location.split(",");
-       lat = parseFloat(parts[0]);
-       lng = parseFloat(parts[1]);
-     }
-
-     return {
-       ...p,
-       latitude: lat,
-       longitude: lng
-     };
-   })
-   .filter(p =>
-     (p.category || "").toLowerCase() === "event"
-   );
+ return [];
 }
 
 function normalizeUser(u) {
@@ -205,12 +291,25 @@ function normalizeUser(u) {
  const lngRaw = loc?.longitude?.N ?? loc?.longitude;
  const imageKey = u.imageKey?.S || u.imageKey;
 
+ const socialRaw = u.socialMediaLinks?.L || u.socialMediaLinks || [];
+ const socialMediaLinks = socialRaw.map(item => {
+   const val = item.M || item;
+   return {
+     platform: val.platform?.S || val.platform,
+     url: val.url?.S || val.url
+   };
+ });
+
  return {
    ...u,
    name: u.name?.S || u.name,
+   email: u.email?.S || u.email,
    username: u.username?.S || u.username,
    church: u.church?.S || u.church,
+   churchPosition: u.churchPosition?.S || u.churchPosition,
    bio: u.bio?.S || u.bio,
+   socialMediaLinks,
+   recommended: u.recommended?.S || u.recommended,
    profileImage: imageKey
      ? `https://discipler221e46f-prod.s3.eu-north-1.amazonaws.com/public/profilePics/${imageKey}/profile.jpg`
      : null,
@@ -220,29 +319,93 @@ function normalizeUser(u) {
  };
 }
 
-/* USER ICON */
-function createIcon() {
+function createIcon(u) {
+
+ const isRecommended = !!u.recommended;
+ const isChurchLeader = (u.churchPosition || "").toLowerCase() === "church leader";
+ const hasProfileImage = !!u.profileImage;
+
+ // OUTER RING
+ const outerRing = isRecommended ? "#22c55e" : "white";
+
+ // CHURCH LEADER WITH PROFILE IMAGE
+ if (isChurchLeader && hasProfileImage) {
+
+   return L.divIcon({
+     className: "",
+     html: `
+       <div class="marker-inner" style="
+         width:34px;
+         height:34px;
+         border-radius:50%;
+         background:${outerRing};
+         display:flex;
+         align-items:center;
+         justify-content:center;
+         box-shadow:0 2px 6px rgba(0,0,0,0.3);
+       ">
+         <img src="${u.profileImage}" style="
+           width:28px;
+           height:28px;
+           border-radius:50%;
+           object-fit:cover;
+         "/>
+       </div>
+     `,
+     iconSize: [34, 34],
+     iconAnchor: [17, 17]
+   });
+ }
+
+ // CHURCH LEADER WITHOUT PROFILE IMAGE
+ if (isChurchLeader && !hasProfileImage) {
+
+   return L.divIcon({
+     className: "",
+     html: `
+       <div class="marker-inner" style="
+         width:30px;
+         height:30px;
+         border-radius:50%;
+         background:#4a6cf7;
+         display:flex;
+         align-items:center;
+         justify-content:center;
+         color:white;
+         font-size:14px;
+         border:2px solid ${outerRing};
+         box-shadow:0 2px 6px rgba(0,0,0,0.3);
+       ">
+         🏛️
+       </div>
+     `,
+     iconSize: [30, 30],
+     iconAnchor: [15, 15]
+   });
+ }
+
+ // NORMAL USER
  return L.divIcon({
    className: "",
    html: `
-     <div style="width:30px;height:30px;border-radius:50%;background:#4a6cf7;
-     display:flex;align-items:center;justify-content:center;color:white;">
+     <div class="marker-inner" style="
+       width:30px;
+       height:30px;
+       border-radius:50%;
+       background:#4a6cf7;
+       display:flex;
+       align-items:center;
+       justify-content:center;
+       color:white;
+       font-size:14px;
+       border:2px solid ${outerRing};
+       box-shadow:0 2px 6px rgba(0,0,0,0.3);
+     ">
        👤
      </div>
-   `
- });
-}
-
-/* 🔥 EVENT ICON */
-function createEventIcon() {
- return L.divIcon({
-   className: "",
-   html: `
-     <div style="width:30px;height:30px;border-radius:50%;background:red;
-     display:flex;align-items:center;justify-content:center;color:white;">
-       🔥
-     </div>
-   `
+   `,
+   iconSize: [30, 30],
+   iconAnchor: [15, 15]
  });
 }
 
@@ -253,57 +416,97 @@ function render() {
  });
 
  markers = [];
- eventMarkers = [];
 
- /* USERS */
  users.filter(u => !u.ghostMode).forEach(u => {
 
    const marker = L.marker([u.latitude, u.longitude], {
-     icon: createIcon()
+     icon: createIcon(u)
    }).addTo(map);
 
    marker.userData = u;
 
    marker.on("click", () => {
+     selectMarker(marker);
      showSidePanel(u);
    });
 
    markers.push(marker);
  });
+}
 
- /* 🔥 EVENTS */
- events.forEach(e => {
+/* ✅ PULSING WORKS AGAIN */
+function selectMarker(marker) {
 
-   if (!e.latitude || !e.longitude) return;
+ if (selectedMarker) {
+   const prev = selectedMarker.getElement()?.querySelector(".marker-inner");
+   if (prev) prev.classList.remove("pulse");
+ }
 
-   const marker = L.marker([e.latitude, e.longitude], {
-     icon: createEventIcon()
-   }).addTo(map);
+ selectedMarker = marker;
 
-   marker.eventData = e;
+ const el = marker.getElement()?.querySelector(".marker-inner");
+ if (el) el.classList.add("pulse");
 
-   marker.on("click", () => {
-     showSidePanel({
-       name: e.title || "Event",
-       username: e.username || "",
-       church: e.description || "",
-       bio: e.category || "Event"
-     });
-   });
-
-   eventMarkers.push(marker);
- });
+ map.setView(marker.getLatLng(), map.getZoom());
 }
 
 function showSidePanel(u) {
 
  const panel = document.getElementById("sidePanel");
 
+ const socialHTML = (u.socialMediaLinks || []).map(s => {
+
+   let img = "link.png";
+   if (s.platform?.toLowerCase().includes("instagram")) img = "instagram.png";
+   if (s.platform?.toLowerCase().includes("youtube")) img = "youtube.png";
+   if (s.platform?.toLowerCase().includes("facebook")) img = "facebook.png";
+   if (s.platform?.toLowerCase().includes("tiktok")) img = "tiktok.png";
+
+   return `<a class="socialIcon" href="${s.url}" target="_blank">
+     <img src="${img}" />
+   </a>`;
+ }).join("");
+
  panel.innerHTML = `
-   <div style="font-weight:700;font-size:18px;">${u.name || ""}</div>
-   <div>@${u.username || ""}</div>
-   <div>${u.church || ""}</div>
-   <div>${u.bio || ""}</div>
+   <img class="sideProfileImg" src="${u.profileImage || 'https://via.placeholder.com/100'}"/>
+
+   <div class="sideName">${u.name || ""}</div>
+   <div class="sideUsername">@${u.username || ""}</div>
+   <div class="sideChurch">${u.church || ""}</div>
+   <div class="sideBio">${u.bio || ""}</div>
+
+   <div class="socialRow">${socialHTML}</div>
+
+   <div class="sideButtons">
+
+     <a class="sideBtn" href="mailto:${u.email || ''}">
+       <span class="emailIcon">
+         <svg viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2">
+           <path d="M4 4h16v16H4z"/>
+           <path d="M22 6l-10 7L2 6"/>
+         </svg>
+       </span>
+       Send email
+     </a>
+
+   </div>
+
+   <div class="appPreviewRow">
+     <img src="app_preview_1.png" />
+     <img src="app_preview_2.png" />
+   </div>
+
+   <div class="downloadText">
+     Download the Discipler app on IOS or Android to add your marker to the map and get discipled in healing the sick, casting out demons, preaching the gospel, and living a life by the Holy Spirit.
+   </div>
+   
+   <a class="sideBtn" href="https://apps.apple.com/se/app/discipler/id6756657404" target="_blank">
+     🍎 Download app on iOS
+   </a>
+
+   <a class="sideBtn" href="https://play.google.com/store/apps/details?id=com.theway.discipler44&hl=en" target="_blank">
+     🤖 Download app on Android
+   </a>
  `;
 
  panel.classList.add("active");
@@ -316,6 +519,7 @@ function hideSidePanel() {
 function setupSearch() {
 
  const input = document.getElementById("searchInput");
+ const clearBtn = document.getElementById("clearSearch");
 
  input.addEventListener("input", () => {
 
@@ -323,11 +527,17 @@ function setupSearch() {
 
    const results = users.filter(u =>
      (u.name || "").toLowerCase().includes(val) ||
-     (u.username || "").toLowerCase().includes(val)
+     (u.username || "").toLowerCase().includes(val) ||
+     (u.church || "").toLowerCase().includes(val)
    );
 
    renderSearch(results);
  });
+
+ clearBtn.onclick = () => {
+   input.value = "";
+   document.getElementById("searchResults").innerHTML = "";
+ };
 }
 
 function renderSearch(list) {
@@ -340,7 +550,21 @@ function renderSearch(list) {
    const div = document.createElement("div");
    div.className = "search-item";
 
-   div.innerHTML = `<div>${u.name}</div>`;
+   div.innerHTML = `
+     <div class="search-icon">👤</div>
+     <div>
+       <div><b>${u.name || u.username}</b></div>
+       <div style="font-size:11px;color:gray;">${u.church || ""}</div>
+     </div>
+   `;
+
+   div.onclick = () => {
+     const m = markers.find(m => m.userData.username === u.username);
+     if (m) {
+       selectMarker(m);
+       showSidePanel(u);
+     }
+   };
 
    box.appendChild(div);
  });
