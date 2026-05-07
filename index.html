@@ -210,7 +210,7 @@ async function fetchPosts() {
  const res = await fetch(`${API_BASE}/posts`);
  const json = await res.json();
 
- const filtered = (json || []).filter(p => p.category === "event");
+ const filtered = (json || []).filter(p => p.category === "Event");
 
  return filtered.map(p => {
 
