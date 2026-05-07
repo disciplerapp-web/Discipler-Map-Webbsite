@@ -358,7 +358,7 @@ function createIcon(u) {
  const hasProfileImage = !!u.profileImage;
 
  // OUTER RING
- const outerRing = isRecommended ? "#22c55e" : "white";
+ const outerRing = isRecommended ? "#2eea6b" : "white";
 
  // CHURCH LEADER WITH PROFILE IMAGE
  if (isChurchLeader && hasProfileImage) {
@@ -433,7 +433,7 @@ return L.divIcon({
       justify-content:center;
       color:white;
       font-size:14px;
-      border:2px solid white;
+      border:2px solid ${isRecommendedUser ? '#2eea6b' : 'white'};
       box-shadow:0 2px 6px rgba(0,0,0,0.3);
     ">
       👤
@@ -523,11 +523,11 @@ function selectMarker(marker) {
 
  selectedMarker = marker;
 
-const el = marker.getElement()?.querySelector(".marker-inner");
+ const el = marker.getElement()?.querySelector(".marker-inner");
 
-if (el) {
+ if (el && marker.userData?.username !== "event") {
    el.classList.add("pulse");
-}
+ }
 
  map.setView(marker.getLatLng(), map.getZoom());
 }
