@@ -215,12 +215,30 @@ body { margin:0; padding:0; }
  margin-top:10px;
  line-height:1.4;
 }
+#debugBox {
+ position:absolute;
+ bottom:10px;
+ left:10px;
+ width:360px;
+ max-height:220px;
+ overflow:auto;
+ background:white;
+ border:1px solid #ddd;
+ border-radius:10px;
+ padding:10px;
+ font-size:11px;
+ font-family:monospace;
+ z-index:99999;
+ box-shadow:0 2px 10px rgba(0,0,0,0.2);
+} 
 </style>
 </head>
 
 <body>
 
 <div id="map"></div>
+
+<div id="debugBox"></div>
 
 <div id="searchContainer">
   <input id="searchInput" placeholder="Search users..." />
@@ -259,6 +277,8 @@ function init() {
 
 async function loadData() {
 
+ logDebug("Loading data...");
+
  const [u, e] = await Promise.all([
    fetchUsers(),
    fetchEvents()
@@ -266,6 +286,10 @@ async function loadData() {
 
  users = u;
  events = e;
+
+ logDebug("Users loaded", users.length);
+ logDebug("Events loaded", events.length);
+ logDebug("Raw events sample", events[0]);
 
  if (!hasRendered) {
    hasRendered = true;
@@ -304,18 +328,49 @@ async function fetchEvents() {
    body: JSON.stringify({ query })
  });
 
- const json = await res.json();
+const json = await res.json();
 
- return (json?.data?.listPosts?.items || [])
-   .filter(p => p.category === "events")
-   .map(p => ({
-     ...p,
-     latitude: 59.3293,
-     longitude: 18.0686,
-     isEvent: true
-   }));
+logDebug("GraphQL raw response", json);
+
+const items = json?.data?.listPosts?.items || [];
+
+logDebug("All posts count", items.length);
+logDebug("First post", items[0]);
+
+const filtered = items.filter(p => p.category === "events");
+
+logDebug("Filtered events count", filtered.length);
+
+return filtered.map(p => ({
+  ...p,
+  latitude: 59.3293,
+  longitude: 18.0686,
+  isEvent: true
+}));
 }
+function logDebug(msg, data) {
 
+ const box = document.getElementById("debugBox");
+
+ const time = new Date().toLocaleTimeString();
+
+ const line = document.createElement("div");
+ line.style.marginBottom = "6px";
+
+ line.innerHTML = `
+   <div style="color:#666;">[${time}]</div>
+   <div>${msg}</div>
+   ${data ? `<pre style="white-space:pre-wrap;color:#333;">${JSON.stringify(data, null, 2)}</pre>` : ""}
+   <hr>
+ `;
+
+ box.appendChild(line);
+
+ box.scrollTop = box.scrollHeight;
+
+ console.log(msg, data);
+}
+ 
 function normalizeUser(u) {
 
  const loc = u.location?.M || u.location;
