@@ -242,7 +242,6 @@ let map;
 let users = [];
 let events = [];
 let posts = [];
-let hasRendered = false;
 
 let markers = [];
 let selectedMarker = null;
@@ -268,22 +267,30 @@ async function loadData() {
  const [u, e, p] = await Promise.all([
    fetchUsers(),
    fetchEvents(),
-   fetchPosts() // 🔥 ADDED ONLY
+   fetchPosts()
  ]);
 
  users = u;
  events = e;
- posts = p; // 🔥 ADDED ONLY
+ posts = p;
 
- if (!hasRendered) {
-   hasRendered = true;
-   render();
- }
+ console.log("Fresh users:", users);
+ console.log("Fresh posts:", posts);
+
+ render();
 }
 
 async function fetchUsers() {
- const res = await fetch(`${API_BASE}/users`);
+
+ const res = await fetch(
+   `${API_BASE}/users?t=${Date.now()}`,
+   { cache: "no-store" }
+ );
+
  const json = await res.json();
+
+ console.log("Users returned from API:", json);
+
  return (json || []).map(normalizeUser);
 }
 
@@ -293,8 +300,15 @@ async function fetchEvents() {
 
 // 🔥 ADDED
 async function fetchPosts() {
- const res = await fetch(`${API_BASE}/posts`);
+
+ const res = await fetch(
+   `${API_BASE}/posts?t=${Date.now()}`,
+   { cache: "no-store" }
+ );
+
  const json = await res.json();
+
+ console.log("Posts returned from API:", json);
 
  return (json || [])
    .filter(p =>
@@ -476,6 +490,14 @@ function createEventIcon() {
 }
  
 function render() {
+
+ console.log(
+   "Rendering",
+   users.length,
+   "users and",
+   posts.length,
+   "posts"
+ );
 
  map.eachLayer(layer => {
    if (layer instanceof L.Marker) map.removeLayer(layer);
