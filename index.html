@@ -263,11 +263,15 @@ body { margin:0; padding:0; }
  display:flex;
  align-items:center;
  justify-content:center;
- background:linear-gradient(135deg, #7b2cff, #5420b8);
- color:white;
- font-size:42px;
- font-weight:800;
+ overflow:hidden;
  box-shadow:0 10px 30px rgba(88,43,180,0.20);
+}
+
+.disciplerLogo img {
+ width:100%;
+ height:100%;
+ object-fit:cover;
+ display:block;
 }
 
 .disciplerHero h1 {
@@ -369,6 +373,18 @@ body { margin:0; padding:0; }
  box-shadow:0 12px 30px rgba(85,45,150,0.15);
 }
 
+.disciplerFeatureIcon.prayer {
+ background:linear-gradient(135deg, #d7b9f5, #8d5bd1);
+}
+
+.disciplerFeatureIcon.evangelism {
+ background:linear-gradient(135deg, #c9a5ef, #7138c1);
+}
+
+.disciplerFeatureIcon.discipleship {
+ background:linear-gradient(135deg, #e0c9f6, #9a69d8);
+}
+
 .disciplerFeatureGrid {
  max-width:1100px;
  margin:55px auto 0;
@@ -381,7 +397,7 @@ body { margin:0; padding:0; }
  padding:30px 24px;
  border-radius:24px;
  background:#f7f7fa;
- text-align:left;
+ text-align:center;
 }
 
 .disciplerFeatureCard h3 {
@@ -1281,8 +1297,12 @@ function showWelcomePage() {
      <section class="disciplerHero">
 
        <div class="disciplerLogo">
-         D
+         <img
+           src="profile.png"
+           alt="Discipler"
+         />
        </div>
+       
 
        <h1>
          Meet Discipler.
@@ -1330,74 +1350,65 @@ function showWelcomePage() {
        <div class="disciplerFeatureGrid">
 
          <div class="disciplerFeatureCard">
-           <h3>Prayer</h3>
+
+           <div class="disciplerFeatureIcon prayer">
+             🙏
+           </div>
+
+           <h3>
+             Prayer
+           </h3>
+
            <p>
              Learn to develop a deeper prayer life
              and make time with God part of your everyday life.
            </p>
+
          </div>
 
+
          <div class="disciplerFeatureCard">
-           <h3>Evangelism</h3>
+
+           <div class="disciplerFeatureIcon evangelism">
+             ✝
+           </div>
+
+           <h3>
+             Evangelism
+           </h3>
+
            <p>
              Become more confident sharing the Gospel
              and talking about Jesus with others.
            </p>
+
          </div>
 
+
          <div class="disciplerFeatureCard">
-           <h3>Discipleship</h3>
+
+           <div class="disciplerFeatureIcon discipleship">
+             📖
+           </div>
+
+           <h3>
+             Discipleship
+           </h3>
+
            <p>
              Grow in your relationship with Christ
              and learn how to help others grow too.
            </p>
+
          </div>
 
        </div>
 
      </section>
+
 
 
      <section class="disciplerSection disciplerPeople">
-
-       <div class="disciplerFeatureIcon">
-         ♡
-       </div>
-
-       <h2>
-         A place to grow together.
-       </h2>
-
-       <p>
-         Connect with Christians, discover Christian
-         content, follow discipleship resources,
-         and be encouraged to live out your faith.
-       </p>
-
-       <div class="disciplerPeopleRow">
-
-         <div class="disciplerPerson">
-           🙏
-         </div>
-
-         <div class="disciplerPerson">
-           ✝
-         </div>
-
-         <div class="disciplerPerson">
-           📖
-         </div>
-
-         <div class="disciplerPerson">
-           ❤️
-         </div>
-
-       </div>
-
-     </section>
-
-
-     <section class="disciplerSection">
 
        <div class="disciplerFeatureIcon">
          ▶
