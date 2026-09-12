@@ -314,6 +314,16 @@ body { margin:0; padding:0; }
  background:#78c438;
 }
 
+.disciplerHeroImage {
+ width:100%;
+ height:auto;
+ aspect-ratio:16 / 7;
+ object-fit:cover;
+ display:block;
+ margin-top:45px;
+}
+
+
 .disciplerBackButton {
  position:fixed;
  top:18px;
@@ -571,6 +581,72 @@ body { margin:0; padding:0; }
 .sharedDownload p {
  color:#555;
  line-height:1.5;
+}
+
+.sharedFooter {
+ background:#000000;
+ color:white;
+ margin-top:60px;
+ padding:55px 24px 65px;
+ text-align:center;
+}
+
+.sharedFooterSocials {
+ display:flex;
+ justify-content:center;
+ align-items:center;
+ gap:18px;
+ margin-bottom:30px;
+}
+
+.sharedFooterSocial {
+ width:48px;
+ height:48px;
+ border-radius:50%;
+ background:white;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ text-decoration:none;
+ overflow:hidden;
+}
+
+.sharedFooterSocial img {
+ width:28px;
+ height:28px;
+ object-fit:contain;
+}
+
+.sharedFooterApps {
+ display:flex;
+ justify-content:center;
+ gap:14px;
+ flex-wrap:wrap;
+}
+
+.sharedFooterAppButton {
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ min-width:220px;
+ padding:15px 22px;
+ border-radius:14px;
+ background:white;
+ color:#000000;
+ text-decoration:none;
+ font-size:15px;
+ font-weight:800;
+ box-sizing:border-box;
+}
+
+.sharedFooterAppButton:hover {
+ transform:scale(1.02);
+}
+
+.sharedFooterCopyright {
+ margin-top:30px;
+ color:#bdbdbd;
+ font-size:13px;
 }
 
 @media (max-width:700px) {
@@ -1225,6 +1301,12 @@ function showWelcomePage() {
          EXPLORE DISCIPLER
        </button>
 
+       <img
+         class="disciplerHeroImage"
+         src="discipler Hero Image.png"
+         alt="Discipler"
+       />
+
      </section>
 
 
@@ -1488,7 +1570,7 @@ function showSharedAudio(audio) {
          </div>
 
 
-         <div class="sharedDownload">
+                  <div class="sharedDownload">
 
            <p>
              Want to discover more Christian content,
@@ -1508,6 +1590,61 @@ function showSharedAudio(audio) {
        </div>
 
      </div>
+
+
+     <footer class="sharedFooter">
+
+       <div class="sharedFooterSocials">
+
+         <a
+           class="sharedFooterSocial"
+           href="https://www.tiktok.com/"
+           target="_blank"
+           rel="noopener noreferrer"
+         >
+           <img src="tiktok.png" alt="TikTok" />
+         </a>
+
+         <a
+           class="sharedFooterSocial"
+           href="https://www.instagram.com/"
+           target="_blank"
+           rel="noopener noreferrer"
+         >
+           <img src="instagram.png" alt="Instagram" />
+         </a>
+
+       </div>
+
+
+       <div class="sharedFooterApps">
+
+         <a
+           class="sharedFooterAppButton"
+           href="https://apps.apple.com/es/app/discipler/id6756657404"
+           target="_blank"
+           rel="noopener noreferrer"
+         >
+           🍎 Download on the App Store
+         </a>
+
+         <a
+           class="sharedFooterAppButton"
+           href="https://play.google.com/store/apps/details?id=com.theway.discipler44&utm_source=emea_Med"
+           target="_blank"
+           rel="noopener noreferrer"
+         >
+           ▶ Download on Google Play
+         </a>
+
+       </div>
+
+
+       <div class="sharedFooterCopyright">
+         © 2026 Discipler
+       </div>
+
+     </footer>
 
    </div>
 
@@ -1583,6 +1720,61 @@ function showSharedThread(thread) {
        </div>
 
      </div>
+
+
+     <footer class="sharedFooter">
+
+       <div class="sharedFooterSocials">
+
+         <a
+           class="sharedFooterSocial"
+           href="https://www.tiktok.com/"
+           target="_blank"
+           rel="noopener noreferrer"
+         >
+           <img src="tiktok.png" alt="TikTok" />
+         </a>
+
+         <a
+           class="sharedFooterSocial"
+           href="https://www.instagram.com/"
+           target="_blank"
+           rel="noopener noreferrer"
+         >
+           <img src="instagram.png" alt="Instagram" />
+         </a>
+
+       </div>
+
+
+       <div class="sharedFooterApps">
+
+         <a
+           class="sharedFooterAppButton"
+           href="https://apps.apple.com/es/app/discipler/id6756657404"
+           target="_blank"
+           rel="noopener noreferrer"
+         >
+           🍎 Download on the App Store
+         </a>
+
+         <a
+           class="sharedFooterAppButton"
+           href="https://play.google.com/store/apps/details?id=com.theway.discipler44&utm_source=emea_Med"
+           target="_blank"
+           rel="noopener noreferrer"
+         >
+           ▶ Download on Google Play
+         </a>
+
+       </div>
+
+
+       <div class="sharedFooterCopyright">
+         © 2026 Discipler
+       </div>
+
+     </footer>
 
    </div>
 
