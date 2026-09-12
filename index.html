@@ -608,6 +608,32 @@ body { margin:0; padding:0; }
 
 <div id="sidePanel"></div>
 
+<!-- =========================================================
+     DISCIPLER NEW PAGES
+     ========================================================= -->
+
+<div id="discpilerPage"></div>
+
+<div class="disciplerTemporaryNav">
+
+  <button onclick="showWelcomePage()">
+    Open Discipler Welcome
+  </button>
+
+  <button onclick="showSharedAudioDemo()">
+    Open Shared Audio Demo
+  </button>
+
+  <button onclick="showSharedThreadDemo()">
+    Open Shared Thread Demo
+  </button>
+
+  <button onclick="returnToMap()">
+    Back to Map
+  </button>
+
+</div>
+
 <script>
 const API_BASE = "https://zjt4sxvh0l.execute-api.eu-north-1.amazonaws.com";
 
@@ -1119,6 +1145,505 @@ function renderSearch(list) {
    box.appendChild(div);
  });
 }
+
+
+/* =========================================================
+   DISCIPLER PAGE NAVIGATION
+   ========================================================= */
+
+function openDisciplerPage(html) {
+
+ const page = document.getElementById("discpilerPage");
+
+ document.getElementById("map").style.display = "none";
+ document.getElementById("searchContainer").style.display = "none";
+ document.getElementById("sidePanel").classList.remove("active");
+
+ page.innerHTML = html;
+ page.style.display = "block";
+
+ page.scrollTop = 0;
+ window.scrollTo(0, 0);
+}
+
+
+function returnToMap() {
+
+ const page = document.getElementById("discpilerPage");
+
+ page.style.display = "none";
+ page.innerHTML = "";
+
+ document.getElementById("map").style.display = "block";
+ document.getElementById("searchContainer").style.display = "block";
+
+ map.invalidateSize();
+}
+
+
+/* =========================================================
+   DISCIPLER WELCOME PAGE
+   ========================================================= */
+
+function showWelcomePage() {
+
+ openDisciplerPage(`
+
+   <button class="disciplerBackButton" onclick="returnToMap()">
+     ← Map
+   </button>
+
+   <div class="disciplerPageInner">
+
+     <section class="disciplerHero">
+
+       <div class="disciplerLogo">
+         D
+       </div>
+
+       <h1>
+         Meet Discipler.
+       </h1>
+
+       <p>
+         Go deeper with Jesus, grow as a disciple,
+         and learn to live and share the Gospel
+         through the power of the Holy Spirit.
+       </p>
+
+       <button
+         class="disciplerButton"
+         onclick="showSharedAudioDemo()"
+       >
+         EXPLORE DISCIPLER
+       </button>
+
+     </section>
+
+
+     <section class="disciplerSection">
+
+       <div class="disciplerFeatureIcon">
+         ✦
+       </div>
+
+       <h2>
+         Grow in Christ.
+       </h2>
+
+       <p>
+         Discover Christian teaching, prayer,
+         evangelism, healing, spiritual growth,
+         and practical tools to help you follow Jesus
+         every day.
+       </p>
+
+       <div class="disciplerFeatureGrid">
+
+         <div class="disciplerFeatureCard">
+           <h3>Prayer</h3>
+           <p>
+             Learn to develop a deeper prayer life
+             and make time with God part of your everyday life.
+           </p>
+         </div>
+
+         <div class="disciplerFeatureCard">
+           <h3>Evangelism</h3>
+           <p>
+             Become more confident sharing the Gospel
+             and talking about Jesus with others.
+           </p>
+         </div>
+
+         <div class="disciplerFeatureCard">
+           <h3>Discipleship</h3>
+           <p>
+             Grow in your relationship with Christ
+             and learn how to help others grow too.
+           </p>
+         </div>
+
+       </div>
+
+     </section>
+
+
+     <section class="disciplerSection disciplerPeople">
+
+       <div class="disciplerFeatureIcon">
+         ♡
+       </div>
+
+       <h2>
+         A place to grow together.
+       </h2>
+
+       <p>
+         Connect with Christians, discover Christian
+         content, follow discipleship resources,
+         and be encouraged to live out your faith.
+       </p>
+
+       <div class="disciplerPeopleRow">
+
+         <div class="disciplerPerson">
+           🙏
+         </div>
+
+         <div class="disciplerPerson">
+           ✝
+         </div>
+
+         <div class="disciplerPerson">
+           📖
+         </div>
+
+         <div class="disciplerPerson">
+           ❤️
+         </div>
+
+       </div>
+
+     </section>
+
+
+     <section class="disciplerSection">
+
+       <div class="disciplerFeatureIcon">
+         ▶
+       </div>
+
+       <h2>
+         Christian content.
+       </h2>
+
+       <p>
+         Discover sermons, podcasts, testimonies,
+         teaching, evangelism content, and other
+         resources from Christians around the world.
+       </p>
+
+       <button
+         class="disciplerButton green"
+         onclick="showSharedAudioDemo()"
+       >
+         SEE SHARED CONTENT
+       </button>
+
+     </section>
+
+
+     <section class="disciplerSection">
+
+       <h2>
+         Follow Jesus. Make disciples.
+       </h2>
+
+       <p>
+         Discipler is built to help you take the next step
+         in your walk with Christ.
+       </p>
+
+       <button
+         class="disciplerButton"
+         onclick="showSharedThreadDemo()"
+       >
+         CONTINUE WITH DISCIPLER
+       </button>
+
+     </section>
+
+
+     <footer class="disciplerFooter">
+
+       <div class="disciplerFooterLogo">
+         Discipler
+       </div>
+
+       <p>
+         © 2026 Discipler
+       </p>
+
+     </footer>
+
+   </div>
+
+ `);
+}
+
+
+/* =========================================================
+   SHARED CONTENT PAGE
+   ========================================================= */
+
+function showSharedAudioDemo() {
+
+ const sharedAudio = {
+   title: "Walking With Jesus",
+   author: "Discipler",
+   description:
+     "Take some time to slow down, pray, and focus your heart on Jesus.",
+   image:
+     "https://via.placeholder.com/800x500.png?text=Discipler+Audio",
+   audioUrl: ""
+ };
+
+ showSharedAudio(sharedAudio);
+}
+
+
+function showSharedThreadDemo() {
+
+ const sharedThread = {
+   title: "A Thought About Following Jesus",
+   author: "Discipler",
+   message:
+     "Following Jesus is not just about knowing more. It is about allowing Him to transform the way we live, love, serve, and share the Gospel."
+ };
+
+ showSharedThread(sharedThread);
+}
+
+
+function showSharedAudio(audio) {
+
+ openDisciplerPage(`
+
+   <button class="disciplerBackButton" onclick="returnToMap()">
+     ← Map
+   </button>
+
+   <div class="sharedPage">
+
+     <div class="sharedContainer">
+
+       <div class="sharedBrand">
+
+         <div class="sharedBrandMark">
+           D
+         </div>
+
+         <div class="sharedBrandTitle">
+           Discipler
+         </div>
+
+       </div>
+
+
+       <div class="sharedCard">
+
+         <div class="sharedType">
+           Shared Audio
+         </div>
+
+         <div class="sharedTitle">
+           ${escapeHTML(audio.title)}
+         </div>
+
+         <div class="sharedAuthor">
+           by ${escapeHTML(audio.author)}
+         </div>
+
+         <img
+           class="sharedImage"
+           src="${audio.image}"
+           alt="Discipler audio"
+         />
+
+         <div class="sharedDescription">
+           ${escapeHTML(audio.description)}
+         </div>
+
+         <div class="sharedAudioBox">
+
+           ${
+             audio.audioUrl
+               ? `
+                 <audio controls preload="metadata">
+                   <source
+                     src="${audio.audioUrl}"
+                     type="audio/mpeg"
+                   />
+                 </audio>
+               `
+               : `
+                 <div style="
+                   text-align:center;
+                   color:#666;
+                   padding:20px 0;
+                 ">
+                   Audio player will appear here.
+                 </div>
+               `
+           }
+
+         </div>
+
+
+         <div class="sharedDownload">
+
+           <p>
+             Want to discover more Christian content,
+             discipleship resources, prayer, evangelism,
+             and more?
+           </p>
+
+           <button
+             class="disciplerButton green"
+             onclick="showWelcomePage()"
+           >
+             DISCOVER DISCIPLER
+           </button>
+
+         </div>
+
+       </div>
+
+     </div>
+
+   </div>
+
+ `);
+}
+
+
+function showSharedThread(thread) {
+
+ openDisciplerPage(`
+
+   <button class="disciplerBackButton" onclick="returnToMap()">
+     ← Map
+   </button>
+
+   <div class="sharedPage">
+
+     <div class="sharedContainer">
+
+       <div class="sharedBrand">
+
+         <div class="sharedBrandMark">
+           D
+         </div>
+
+         <div class="sharedBrandTitle">
+           Discipler
+         </div>
+
+       </div>
+
+
+       <div class="sharedCard">
+
+         <div class="sharedType">
+           Shared Thread
+         </div>
+
+         <div class="sharedTitle">
+           ${escapeHTML(thread.title)}
+         </div>
+
+         <div class="sharedAuthor">
+           by ${escapeHTML(thread.author)}
+         </div>
+
+         <div class="sharedThreadBox">
+
+           <div class="sharedThreadMessage">
+             ${escapeHTML(thread.message)}
+           </div>
+
+         </div>
+
+
+         <div class="sharedDownload">
+
+           <p>
+             This thread was shared with you from Discipler.
+             Explore the full Discipler experience and
+             discover more Christian content and resources.
+           </p>
+
+           <button
+             class="disciplerButton green"
+             onclick="showWelcomePage()"
+           >
+             DISCOVER DISCIPLER
+           </button>
+
+         </div>
+
+       </div>
+
+     </div>
+
+   </div>
+
+ `);
+}
+
+
+/* =========================================================
+   BASIC HTML SAFETY
+   ========================================================= */
+
+function escapeHTML(value) {
+
+ if (value === null || value === undefined) {
+   return "";
+ }
+
+ return String(value)
+   .replace(/&/g, "&amp;")
+   .replace(/</g, "&lt;")
+   .replace(/>/g, "&gt;")
+   .replace(/"/g, "&quot;")
+   .replace(/'/g, "&#039;");
+}
+
+
+/* =========================================================
+   FUTURE URL ROUTING
+   ========================================================= */
+
+function handleDisciplerURL() {
+
+ const params = new URLSearchParams(window.location.search);
+
+ const page = params.get("page");
+ const type = params.get("type");
+
+ if (page === "welcome") {
+
+   showWelcomePage();
+
+   return;
+ }
+
+ if (page === "shared" && type === "audio") {
+
+   showSharedAudioDemo();
+
+   return;
+ }
+
+ if (page === "shared" && type === "thread") {
+
+   showSharedThreadDemo();
+
+   return;
+ }
+}
+
+
+/* =========================================================
+   START URL ROUTING AFTER MAP LOAD
+   ========================================================= */
+
+window.addEventListener("load", () => {
+ handleDisciplerURL();
+});
+
 </script>
 
 </body>
