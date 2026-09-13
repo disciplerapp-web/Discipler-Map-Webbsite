@@ -7,6 +7,7 @@
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/aws-amplify@5/dist/aws-amplify.min.js"></script> 
 
 <style>
 body { margin:0; padding:0; }
@@ -754,7 +755,6 @@ body { margin:0; padding:0; }
 <script>
 const API_BASE = "https://zjt4sxvh0l.execute-api.eu-north-1.amazonaws.com";
 
-// 🔥 ADDED — visual on-page debug log, shows up directly on the phone/browser, no devtools needed
 function debugLog(label, value) {
   const panel = document.getElementById("debugPanel");
   if (!panel) return;
@@ -766,6 +766,36 @@ function debugLog(label, value) {
   line.textContent = `${label}: ${typeof value === "string" ? value : JSON.stringify(value)}`;
   panel.appendChild(line);
 }
+
+// 🔥 ADDED — configure Amplify for anonymous (public IAM) access to AppSync
+const { Amplify, API, graphqlOperation } = aws_amplify;
+
+Amplify.configure({
+  Auth: {
+    region: "eu-north-1",                         // ⚠️ confirm this matches your Cognito region
+    identityPoolId: "YOUR_IDENTITY_POOL_ID_HERE",  // ⚠️ from amplifyconfiguration.json
+    mandatorySignIn: false
+  },
+  API: {
+    graphql_endpoint: "YOUR_APPSYNC_GRAPHQL_URL_HERE", // ⚠️ from amplifyconfiguration.json
+    graphql_endpoint_iam_region: "eu-north-1",
+    aws_appsync_authenticationType: "AWS_IAM"
+  }
+});
+
+// 🔥 ADDED — the auto-generated Amplify query for fetching one HomeItem by id
+const getHomeItemQuery = `
+  query GetHomeItem($id: ID!) {
+    getHomeItem(id: $id) {
+      id
+      homeSectionID
+      threadTitle
+      threadSubtitle
+      username
+      owner
+    }
+  }
+`;
 
 let map;
 let users = [];
@@ -864,66 +894,39 @@ async function fetchPosts() {
 
 async function fetchThreadById(threadId) {
 
- debugLog("1. threadId received", threadId || "(none)");
+  debugLog("1. threadId received", threadId || "(none)");
 
- if (!threadId) {
-   debugLog("2. Skipped fetch", "no threadId was passed in");
-   return null;
- }
+  if (!threadId) {
+    debugLog("2. Skipped fetch", "no threadId was passed in");
+    return null;
+  }
 
- const url = `${API_BASE}/homeitems/${threadId}?t=${Date.now()}`;
- debugLog("2. Fetch URL", url);
+  try {
+    debugLog("2. Calling AppSync", "getHomeItem query");
 
- try {
-   const res = await fetch(url, { cache: "no-store" });
+    const result = await API.graphql(
+      graphqlOperation(getHomeItemQuery, { id: threadId })
+    );
 
-   debugLog("3. Response status", `${res.status} ${res.statusText}`);
+    debugLog("3. GraphQL result", result);
 
-   const rawText = await res.text();
-   debugLog("4. Raw response body", rawText);
+    const item = result?.data?.getHomeItem;
 
-   if (!res.ok) {
-     debugLog("5. Result", "Request failed (not ok) — returning null");
-     return null;
-   }
+    if (!item) {
+      debugLog("4. Result", "No matching HomeItem found");
+      return null;
+    }
 
-   let json;
-   try {
-     json = JSON.parse(rawText);
-   } catch (parseErr) {
-     debugLog("5. JSON parse error", String(parseErr));
-     return null;
-   }
+    debugLog("4. Found HomeItem", item);
+    return item;
 
-   debugLog("5. Parsed JSON", json);
-
-   if (!json) {
-     return null;
-   }
-
-   const normalized = normalizeThread(json);
-   debugLog("6. Normalized thread", normalized);
-
-   return normalized;
-
- } catch (err) {
-   debugLog("ERROR", String(err));
-   return null;
- }
+  } catch (err) {
+    debugLog("ERROR", JSON.stringify(err));
+    return null;
+  }
 }
 
-// 🔥 ADDED — unwrap DynamoDB-style fields, same pattern as normalizeUser
-function normalizeThread(t) {
 
- return {
-   id: t.id?.S || t.id,
-   homeSectionID: t.homeSectionID?.S || t.homeSectionID,
-   threadTitle: t.threadTitle?.S || t.threadTitle,
-   threadSubtitle: t.threadSubtitle?.S || t.threadSubtitle,
-   username: t.username?.S || t.username,
-   owner: t.owner?.S || t.owner
- };
-}
  
 function normalizeUser(u) {
 
