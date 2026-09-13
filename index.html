@@ -830,6 +830,38 @@ async function fetchPosts() {
      };
    });
 }
+
+// 🔥 ADDED — fetch a single HomeItem (thread) by id, same pattern as fetchPosts/fetchUsers
+async function fetchThreadById(threadId) {
+
+ const res = await fetch(
+   `${API_BASE}/threads/${threadId}?t=${Date.now()}`,
+   { cache: "no-store" }
+ );
+
+ const json = await res.json();
+
+ console.log("Thread returned from API:", json);
+
+ if (!json) {
+   return null;
+ }
+
+ return normalizeThread(json);
+}
+
+// 🔥 ADDED — unwrap DynamoDB-style fields, same pattern as normalizeUser
+function normalizeThread(t) {
+
+ return {
+   id: t.id?.S || t.id,
+   homeSectionID: t.homeSectionID?.S || t.homeSectionID,
+   threadTitle: t.threadTitle?.S || t.threadTitle,
+   threadSubtitle: t.threadSubtitle?.S || t.threadSubtitle,
+   username: t.username?.S || t.username,
+   owner: t.owner?.S || t.owner
+ };
+}
  
 function normalizeUser(u) {
 
@@ -1816,7 +1848,7 @@ function escapeHTML(value) {
    FUTURE URL ROUTING
    ========================================================= */
 
-function handleDisciplerURL() {
+async function handleDisciplerURL() {
   const params = new URLSearchParams(window.location.search);
   const page = params.get("page");
   const type = params.get("type");
@@ -1824,18 +1856,31 @@ function handleDisciplerURL() {
 
   if (page === "welcome") { showWelcomePage(); return; }
   if (page === "shared" && type === "audio") { showSharedAudioDemo(code); return; }
-  if (page === "shared" && type === "thread") { showSharedThreadDemo(code); return; }
+  if (page === "shared" && type === "thread") { await showSharedThreadDemo(code); return; }
 }
 
-function showSharedThreadDemo(code) {
-  // Next step: fetch(`${API_BASE}/threads/${code}`) → returns a ThreadResponse
-  // and map ThreadResponseData.threadTitle/username/threadSubtitle into showSharedThread()
+async function showSharedThreadDemo(code) {
+
   console.log("Thread code from SMS link:", code);
+
+  const data = await fetchThreadById(code);
+
+  if (!data) {
+    const fallbackThread = {
+      title: "Thread not found",
+      author: "Discipler",
+      message: "This shared thread could not be loaded. It may have been removed."
+    };
+    showSharedThread(fallbackThread);
+    return;
+  }
+
   const sharedThread = {
-    title: "A Thought About Following Jesus",
-    author: "Discipler",
-    message: "Following Jesus is not just about knowing more..."
+    title: data.threadTitle || "Shared Thread",
+    author: data.username || "Discipler",
+    message: data.threadSubtitle || ""
   };
+
   showSharedThread(sharedThread);
 }
 
