@@ -773,11 +773,11 @@ const { Amplify, API, graphqlOperation } = aws_amplify;
 Amplify.configure({
   Auth: {
     region: "eu-north-1",                         // ⚠️ confirm this matches your Cognito region
-    identityPoolId: "YOUR_IDENTITY_POOL_ID_HERE",  // ⚠️ from amplifyconfiguration.json
+    identityPoolId: "eu-north-1:a92c2232-e559-4e70-a12c-ea1543de3b1d",  // ⚠️ from amplifyconfiguration.json
     mandatorySignIn: false
   },
   API: {
-    graphql_endpoint: "YOUR_APPSYNC_GRAPHQL_URL_HERE", // ⚠️ from amplifyconfiguration.json
+    graphql_endpoint: "https://j477ltgkvvhgbazn6ivbfb5be4.appsync-api.eu-north-1.amazonaws.com/graphql", // ⚠️ from amplifyconfiguration.json
     graphql_endpoint_iam_region: "eu-north-1",
     aws_appsync_authenticationType: "AWS_IAM"
   }
