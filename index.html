@@ -841,7 +841,7 @@ async function fetchThreadById(threadId) {
 
  try {
    const res = await fetch(
-     `${API_BASE}/threads/${threadId}?t=${Date.now()}`,
+     `${API_BASE}/homeitems/${threadId}?t=${Date.now()}`,
      { cache: "no-store" }
    );
 
