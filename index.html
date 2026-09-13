@@ -723,7 +723,7 @@ body { margin:0; padding:0; }
     🎧 Shared Audio
   </button>
 
-  <button onclick="showSharedThreadDemo()">
+  <button onclick="showSharedThreadDemoStatic()">
     💬 Shared Thread
   </button>
 
@@ -834,20 +834,36 @@ async function fetchPosts() {
 // 🔥 ADDED — fetch a single HomeItem (thread) by id, same pattern as fetchPosts/fetchUsers
 async function fetchThreadById(threadId) {
 
- const res = await fetch(
-   `${API_BASE}/threads/${threadId}?t=${Date.now()}`,
-   { cache: "no-store" }
- );
-
- const json = await res.json();
-
- console.log("Thread returned from API:", json);
-
- if (!json) {
+ if (!threadId) {
+   console.warn("fetchThreadById called with no threadId — skipping fetch");
    return null;
  }
 
- return normalizeThread(json);
+ try {
+   const res = await fetch(
+     `${API_BASE}/threads/${threadId}?t=${Date.now()}`,
+     { cache: "no-store" }
+   );
+
+   if (!res.ok) {
+     console.warn("Thread fetch failed with status:", res.status);
+     return null;
+   }
+
+   const json = await res.json();
+
+   console.log("Thread returned from API:", json);
+
+   if (!json) {
+     return null;
+   }
+
+   return normalizeThread(json);
+
+ } catch (err) {
+   console.error("Error fetching thread:", err);
+   return null;
+ }
 }
 
 // 🔥 ADDED — unwrap DynamoDB-style fields, same pattern as normalizeUser
@@ -1879,6 +1895,18 @@ async function showSharedThreadDemo(code) {
     title: data.threadTitle || "Shared Thread",
     author: data.username || "Discipler",
     message: data.threadSubtitle || ""
+  };
+
+  showSharedThread(sharedThread);
+}
+
+// 🔥 ADDED — pure demo version for the nav button, no backend call at all
+function showSharedThreadDemoStatic() {
+
+  const sharedThread = {
+    title: "A Thought About Following Jesus",
+    author: "Discipler",
+    message: "Following Jesus is not just about knowing more. It is about allowing Him to transform the way we live, love, serve, and share the Gospel."
   };
 
   showSharedThread(sharedThread);
