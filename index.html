@@ -713,6 +713,24 @@ body { margin:0; padding:0; }
 
 <div id="discpilerPage"></div>
 
+<div id="debugPanel" style="
+  display:none;
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  max-height:40vh;
+  overflow:auto;
+  background:#111;
+  color:#0f0;
+  font-family:monospace;
+  font-size:12px;
+  padding:12px;
+  z-index:99999;
+  white-space:pre-wrap;
+  word-break:break-all;
+"></div>
+
 <div class="disciplerTemporaryNav">
 
   <button onclick="showWelcomePage()">
@@ -735,6 +753,19 @@ body { margin:0; padding:0; }
 
 <script>
 const API_BASE = "https://zjt4sxvh0l.execute-api.eu-north-1.amazonaws.com";
+
+// 🔥 ADDED — visual on-page debug log, shows up directly on the phone/browser, no devtools needed
+function debugLog(label, value) {
+  const panel = document.getElementById("debugPanel");
+  if (!panel) return;
+  panel.style.display = "block";
+  const line = document.createElement("div");
+  line.style.marginBottom = "8px";
+  line.style.borderBottom = "1px solid #333";
+  line.style.paddingBottom = "8px";
+  line.textContent = `${label}: ${typeof value === "string" ? value : JSON.stringify(value)}`;
+  panel.appendChild(line);
+}
 
 let map;
 let users = [];
@@ -831,37 +862,52 @@ async function fetchPosts() {
    });
 }
 
-// 🔥 ADDED — fetch a single HomeItem (thread) by id, same pattern as fetchPosts/fetchUsers
 async function fetchThreadById(threadId) {
 
+ debugLog("1. threadId received", threadId || "(none)");
+
  if (!threadId) {
-   console.warn("fetchThreadById called with no threadId — skipping fetch");
+   debugLog("2. Skipped fetch", "no threadId was passed in");
    return null;
  }
 
+ const url = `${API_BASE}/homeitems/${threadId}?t=${Date.now()}`;
+ debugLog("2. Fetch URL", url);
+
  try {
-   const res = await fetch(
-     `${API_BASE}/homeitems/${threadId}?t=${Date.now()}`,
-     { cache: "no-store" }
-   );
+   const res = await fetch(url, { cache: "no-store" });
+
+   debugLog("3. Response status", `${res.status} ${res.statusText}`);
+
+   const rawText = await res.text();
+   debugLog("4. Raw response body", rawText);
 
    if (!res.ok) {
-     console.warn("Thread fetch failed with status:", res.status);
+     debugLog("5. Result", "Request failed (not ok) — returning null");
      return null;
    }
 
-   const json = await res.json();
+   let json;
+   try {
+     json = JSON.parse(rawText);
+   } catch (parseErr) {
+     debugLog("5. JSON parse error", String(parseErr));
+     return null;
+   }
 
-   console.log("Thread returned from API:", json);
+   debugLog("5. Parsed JSON", json);
 
    if (!json) {
      return null;
    }
 
-   return normalizeThread(json);
+   const normalized = normalizeThread(json);
+   debugLog("6. Normalized thread", normalized);
+
+   return normalized;
 
  } catch (err) {
-   console.error("Error fetching thread:", err);
+   debugLog("ERROR", String(err));
    return null;
  }
 }
