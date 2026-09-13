@@ -1817,32 +1817,39 @@ function escapeHTML(value) {
    ========================================================= */
 
 function handleDisciplerURL() {
+  const params = new URLSearchParams(window.location.search);
+  const page = params.get("page");
+  const type = params.get("type");
+  const code = params.get("code");   // the imprint, e.g. the HomeItem id
 
- const params = new URLSearchParams(window.location.search);
+  if (page === "welcome") { showWelcomePage(); return; }
+  if (page === "shared" && type === "audio") { showSharedAudioDemo(code); return; }
+  if (page === "shared" && type === "thread") { showSharedThreadDemo(code); return; }
+}
 
- const page = params.get("page");
- const type = params.get("type");
+function showSharedThreadDemo(code) {
+  // Next step: fetch(`${API_BASE}/threads/${code}`) → returns a ThreadResponse
+  // and map ThreadResponseData.threadTitle/username/threadSubtitle into showSharedThread()
+  console.log("Thread code from SMS link:", code);
+  const sharedThread = {
+    title: "A Thought About Following Jesus",
+    author: "Discipler",
+    message: "Following Jesus is not just about knowing more..."
+  };
+  showSharedThread(sharedThread);
+}
 
- if (page === "welcome") {
-
-   showWelcomePage();
-
-   return;
- }
-
- if (page === "shared" && type === "audio") {
-
-   showSharedAudioDemo();
-
-   return;
- }
-
- if (page === "shared" && type === "thread") {
-
-   showSharedThreadDemo();
-
-   return;
- }
+function showSharedAudioDemo(code) {
+  console.log("Audio code from SMS link:", code);
+  // placeholder data stays the same for now
+  const sharedAudio = {
+    title: "Walking With Jesus",
+    author: "Discipler",
+    description: "Take some time to slow down, pray, and focus your heart on Jesus.",
+    image: "https://via.placeholder.com/800x500.png?text=Discipler+Audio",
+    audioUrl: ""
+  };
+  showSharedAudio(sharedAudio);
 }
 
 
