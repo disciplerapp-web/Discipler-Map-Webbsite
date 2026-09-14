@@ -429,22 +429,74 @@ body { margin:0; padding:0; }
 }
 
 .disciplerFooter {
- background:#000000;
- color:white;
- padding:70px 24px;
- text-align:center;
+  background:#000000;
+  color:white;
+  padding:70px 24px;
+  text-align:center;
 }
 
 .disciplerFooterLogo {
- font-size:48px;
- font-weight:800;
- margin-bottom:10px;
+  font-size:48px;
+  font-weight:800;
+  margin-bottom:30px;
+}
+
+.disciplerFooterSocials {
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:28px;
+  margin-bottom:30px;
+}
+
+.disciplerFooterSocial {
+  width:48px;
+  height:48px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-decoration:none;
+}
+
+.disciplerFooterSocial img {
+  width:30px;
+  height:30px;
+  object-fit:contain;
+  filter:brightness(0) invert(1);
+}
+
+.disciplerFooterApps {
+  display:flex;
+  justify-content:center;
+  gap:14px;
+  flex-wrap:wrap;
+  margin-bottom:30px;
+}
+
+.disciplerFooterAppButton {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-width:220px;
+  padding:15px 22px;
+  border:2px solid white;
+  border-radius:30px;
+  background:#000000;
+  color:#ffffff;
+  text-decoration:none;
+  font-size:15px;
+  font-weight:800;
+  box-sizing:border-box;
+}
+
+.disciplerFooterAppButton:hover {
+  transform:scale(1.02);
 }
 
 .disciplerFooter p {
- color:#d5d5d5;
- margin:0;
- font-size:15px;
+  color:#bdbdbd;
+  margin:0;
+  font-size:15px;
 }
 
 .disciplerTemporaryNav {
