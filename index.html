@@ -327,6 +327,168 @@ body { margin:0; padding:0; }
  margin-top:45px;
 }
 
+/* FOUR CONTENT IMAGES UNDER EXPLORE DISCIPLER */
+.disciplerTopContentImages {
+ display:flex;
+ justify-content:center;
+ align-items:center;
+ gap:16px;
+ margin:38px auto 0;
+ max-width:760px;
+}
+
+.disciplerTopContentImage {
+ width:150px;
+ height:150px;
+ border-radius:24px;
+ object-fit:cover;
+ display:block;
+ box-shadow:0 10px 30px rgba(0,0,0,0.12);
+}
+
+.disciplerExplorePage {
+ min-height:100vh;
+ background:#ffffff;
+ padding:100px 24px 80px;
+ text-align:center;
+}
+
+.disciplerExplorePage h1 {
+ margin:0 auto 40px;
+ font-size:clamp(38px, 6vw, 64px);
+ font-weight:800;
+ letter-spacing:-2px;
+}
+
+.disciplerBigAppButtons {
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ gap:22px;
+ max-width:650px;
+ margin:0 auto;
+}
+
+.disciplerBigAppButton {
+ width:100%;
+ min-height:90px;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ border:2px solid white;
+ border-radius:30px;
+ background:#000000;
+ color:#ffffff;
+ text-decoration:none;
+ font-size:24px;
+ font-weight:800;
+ box-sizing:border-box;
+ box-shadow:0 10px 30px rgba(0,0,0,0.15);
+}
+
+.disciplerBigAppButton:hover {
+ transform:scale(1.02);
+}
+
+.disciplerSharedContentPage {
+ min-height:100vh;
+ background:#ffffff;
+ padding:80px 24px;
+}
+
+.disciplerSharedContentContainer {
+ width:100%;
+ max-width:850px;
+ margin:0 auto;
+}
+
+.disciplerSharedContentItem {
+ text-align:center;
+ margin-bottom:90px;
+}
+
+.disciplerSharedContentItem img {
+ width:100%;
+ max-width:600px;
+ aspect-ratio:1 / 1;
+ object-fit:cover;
+ border-radius:28px;
+ display:block;
+ margin:0 auto 28px;
+ box-shadow:0 12px 35px rgba(0,0,0,0.12);
+}
+
+.disciplerSharedContentItem h2 {
+ margin:0 0 16px;
+ font-size:clamp(30px, 5vw, 48px);
+ font-weight:800;
+ letter-spacing:-1px;
+}
+
+.disciplerSharedContentItem p {
+ max-width:650px;
+ margin:0 auto 24px;
+ font-size:19px;
+ line-height:1.55;
+ color:#333b48;
+}
+
+.disciplerContentButtons {
+ display:flex;
+ justify-content:center;
+ align-items:center;
+ gap:12px;
+ flex-wrap:wrap;
+}
+
+.disciplerContentButton {
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ min-width:170px;
+ min-height:54px;
+ padding:0 24px;
+ border-radius:28px;
+ background:#000000;
+ color:#ffffff;
+ text-decoration:none;
+ font-size:16px;
+ font-weight:800;
+}
+
+.disciplerContentButton:hover {
+ transform:scale(1.02);
+}
+
+@media (max-width:700px) {
+
+ .disciplerTopContentImages {
+   gap:8px;
+   padding:0 8px;
+ }
+
+ .disciplerTopContentImage {
+   width:calc((100vw - 64px) / 4);
+   height:calc((100vw - 64px) / 4);
+   max-width:110px;
+   max-height:110px;
+   border-radius:18px;
+ }
+
+ .disciplerSharedContentPage {
+   padding:65px 20px;
+ }
+
+ .disciplerSharedContentItem {
+   margin-bottom:70px;
+ }
+
+ .disciplerBigAppButton {
+   min-height:80px;
+   font-size:20px;
+ }
+}
+
 
 .disciplerBackButton {
  position:fixed;
@@ -1460,10 +1622,38 @@ function showWelcomePage() {
 
        <button
          class="disciplerButton"
-         onclick="showSharedAudioDemo()"
+         onclick="showExploreDownloadPage()"
        >
          EXPLORE DISCIPLER
        </button>
+
+       <div class="disciplerTopContentImages">
+
+         <img
+           class="disciplerTopContentImage"
+           src="Torben.png"
+           alt="Disciple Makers Podcast"
+         />
+
+         <img
+           class="disciplerTopContentImage"
+           src="Agape.png"
+           alt="Agape"
+         />
+
+         <img
+           class="disciplerTopContentImage"
+           src="Bibelbecka.png"
+           alt="BibelBeckas Podcast"
+         />
+
+         <img
+           class="disciplerTopContentImage"
+           src="Philip Alexander.png"
+           alt="Philip Alexander"
+         />
+
+       </div>
 
        <img
          class="disciplerHeroImage"
@@ -1573,7 +1763,7 @@ function showWelcomePage() {
 
        <button
          class="disciplerButton green"
-         onclick="showSharedAudioDemo()"
+         onclick="showSharedContentPage()"
        >
          SEE SHARED CONTENT
        </button>
@@ -1685,7 +1875,222 @@ function showSharedAudioDemo() {
 
  showSharedAudio(sharedAudio);
 }
+ 
+function showSharedContentPage() {
 
+ openDisciplerPage(`
+
+   <button class="disciplerBackButton" onclick="showWelcomePage()">
+     ← Back
+   </button>
+
+   <div class="disciplerSharedContentPage">
+
+     <div class="disciplerSharedContentContainer">
+
+       <!-- DISCIPLE MAKERS PODCAST -->
+
+       <div class="disciplerSharedContentItem">
+
+         <img
+           src="Torben.png"
+           alt="Disciple Makers Podcast"
+         />
+
+         <h2>
+           Disciple Makers Podcast
+         </h2>
+
+         <p>
+           Discover Christian teaching, discipleship,
+           evangelism, and practical encouragement to
+           help you follow Jesus and make disciples.
+         </p>
+
+         <div class="disciplerContentButtons">
+
+           <a
+             class="disciplerContentButton"
+             href="https://www.youtube.com/watch?v=NlZK_Y_ouXM&list=PL0gVAb8r3Mj_GmlWtxcTzZGXLr7lUDJr8"
+             target="_blank"
+             rel="noopener noreferrer"
+           >
+             YouTube
+           </a>
+
+         </div>
+
+       </div>
+
+
+       <!-- AGAPE -->
+
+       <div class="disciplerSharedContentItem">
+
+         <img
+           src="Agape.png"
+           alt="Agape"
+         />
+
+         <h2>
+           Agape
+         </h2>
+
+         <p>
+           Discover evangelism, testimonies, and
+           Christian content from Agape Sverige.
+         </p>
+
+         <div class="disciplerContentButtons">
+
+           <a
+             class="disciplerContentButton"
+             href="https://www.tiktok.com/@agape_se"
+             target="_blank"
+             rel="noopener noreferrer"
+           >
+             TikTok
+           </a>
+
+           <a
+             class="disciplerContentButton"
+             href="https://www.instagram.com/agape_sverige/"
+             target="_blank"
+             rel="noopener noreferrer"
+           >
+             Instagram
+           </a>
+
+         </div>
+
+       </div>
+
+
+       <!-- BIBELBECKAS PODCAST -->
+
+       <div class="disciplerSharedContentItem">
+
+         <img
+           src="Bibelbecka.png"
+           alt="BibelBeckas Podcast"
+         />
+
+         <h2>
+           BibelBeckas Podcast
+         </h2>
+
+         <p>
+           Grow in your faith through Bible teaching,
+           Christian conversations, and encouragement
+           to walk with Jesus.
+         </p>
+
+         <div class="disciplerContentButtons">
+
+           <a
+             class="disciplerContentButton"
+             href="https://www.youtube.com/watch?v=bq_8uEdFunw&list=PLGXYFZHCZfl8NPbSNpYtxXLcAaGwoUXeX"
+             target="_blank"
+             rel="noopener noreferrer"
+           >
+             YouTube
+           </a>
+
+         </div>
+
+       </div>
+
+
+       <!-- PHILIP ALEXANDER -->
+
+       <div class="disciplerSharedContentItem">
+
+         <img
+           src="Philip Alexander.png"
+           alt="Philip Alexander"
+         />
+
+         <h2>
+           Philip Alexander
+         </h2>
+
+         <p>
+           Follow Christian content, evangelism,
+           testimonies, and encounters that point
+           people toward Jesus.
+         </p>
+
+         <div class="disciplerContentButtons">
+
+           <a
+             class="disciplerContentButton"
+             href="https://www.tiktok.com/@philipalexandr"
+             target="_blank"
+             rel="noopener noreferrer"
+           >
+             TikTok
+           </a>
+
+           <a
+             class="disciplerContentButton"
+             href="https://www.instagram.com/philip.alexandr1/"
+             target="_blank"
+             rel="noopener noreferrer"
+           >
+             Instagram
+           </a>
+
+         </div>
+
+       </div>
+
+     </div>
+
+   </div>
+
+ `);
+}
+ 
+function showExploreDownloadPage() {
+
+ openDisciplerPage(`
+
+   <button class="disciplerBackButton" onclick="showWelcomePage()">
+     ← Back
+   </button>
+
+   <div class="disciplerExplorePage">
+
+     <h1>
+       Get Discipler.
+     </h1>
+
+     <div class="disciplerBigAppButtons">
+
+       <a
+         class="disciplerBigAppButton"
+         href="https://apps.apple.com/es/app/discipler/id6756657404"
+         target="_blank"
+         rel="noopener noreferrer"
+       >
+         🍎 Download on the App Store
+       </a>
+
+       <a
+         class="disciplerBigAppButton"
+         href="https://play.google.com/store/apps/details?id=com.theway.discipler44&utm_source=emea_Med"
+         target="_blank"
+         rel="noopener noreferrer"
+       >
+         ▶ Download on Google Play
+       </a>
+
+     </div>
+
+   </div>
+
+ `);
+}
 
 function showSharedThreadDemo() {
 
