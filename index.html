@@ -360,29 +360,22 @@ body { margin:0; padding:0; }
 }
 
 .disciplerFeatureIcon {
- width:150px;
- height:150px;
- margin:0 auto 30px;
- border-radius:50%;
- display:flex;
- align-items:center;
- justify-content:center;
- background:linear-gradient(135deg, #b993e6, #7440c8);
- color:white;
- font-size:64px;
- box-shadow:0 12px 30px rgba(85,45,150,0.15);
+  width:150px;
+  height:150px;
+  margin:0 auto 30px;
+  border-radius:50%;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 12px 30px rgba(85,45,150,0.15);
 }
 
-.disciplerFeatureIcon.prayer {
- background:linear-gradient(135deg, #d7b9f5, #8d5bd1);
-}
-
-.disciplerFeatureIcon.evangelism {
- background:linear-gradient(135deg, #c9a5ef, #7138c1);
-}
-
-.disciplerFeatureIcon.discipleship {
- background:linear-gradient(135deg, #e0c9f6, #9a69d8);
+.disciplerFeatureIcon img {
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
 }
 
 .disciplerFeatureGrid {
@@ -1442,9 +1435,11 @@ function showWelcomePage() {
        <div class="disciplerFeatureGrid">
 
          <div class="disciplerFeatureCard">
-
            <div class="disciplerFeatureIcon prayer">
-             🙏
+             <img
+               src="prayer.png"
+               alt="Prayer"
+             />
            </div>
 
            <h3>
@@ -1455,14 +1450,15 @@ function showWelcomePage() {
              Learn to develop a deeper prayer life
              and make time with God part of your everyday life.
            </p>
-
          </div>
 
 
          <div class="disciplerFeatureCard">
-
            <div class="disciplerFeatureIcon evangelism">
-             ✝
+             <img
+               src="evangelism.png"
+               alt="Evangelism"
+             />
            </div>
 
            <h3>
@@ -1473,14 +1469,15 @@ function showWelcomePage() {
              Become more confident sharing the Gospel
              and talking about Jesus with others.
            </p>
-
          </div>
 
 
          <div class="disciplerFeatureCard">
-
            <div class="disciplerFeatureIcon discipleship">
-             📖
+             <img
+               src="discipleship.png"
+               alt="Discipleship"
+             />
            </div>
 
            <h3>
@@ -1491,7 +1488,6 @@ function showWelcomePage() {
              Grow in your relationship with Christ
              and learn how to help others grow too.
            </p>
-
          </div>
 
        </div>
@@ -1552,6 +1548,53 @@ function showWelcomePage() {
        <div class="disciplerFooterLogo">
          Discipler
        </div>
+
+
+       <div class="disciplerFooterSocials">
+
+         <a
+           class="disciplerFooterSocial"
+           href="https://www.tiktok.com/"
+           target="_blank"
+           rel="noopener noreferrer"
+         >
+           <img src="tiktok.png" alt="TikTok" />
+         </a>
+
+         <a
+           class="disciplerFooterSocial"
+           href="https://www.instagram.com/"
+           target="_blank"
+           rel="noopener noreferrer"
+         >
+           <img src="instagram.png" alt="Instagram" />
+         </a>
+
+       </div>
+
+
+       <div class="disciplerFooterApps">
+
+         <a
+           class="disciplerFooterAppButton"
+           href="https://apps.apple.com/es/app/discipler/id6756657404"
+           target="_blank"
+           rel="noopener noreferrer"
+         >
+           🍎 Download on the App Store
+         </a>
+
+         <a
+           class="disciplerFooterAppButton"
+           href="https://play.google.com/store/apps/details?id=com.theway.discipler44&utm_source=emea_Med"
+           target="_blank"
+           rel="noopener noreferrer"
+         >
+           ▶ Download on Google Play
+         </a>
+
+       </div>
+
 
        <p>
          © 2026 Discipler
